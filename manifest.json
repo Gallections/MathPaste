@@ -1,0 +1,21 @@
+{
+    "manifest_version": 3,
+    "name": "GPT to Notion Math Paster Tool",
+    "version": "1.0.0",
+    "description": "An light weight application that aims to ease the transfer of rendered math equations from GPT to Notion",
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": "content.js"
+        }
+    ]
+
+  }
