@@ -70,12 +70,69 @@ async function getClipBoardPlainText() {
 }
 
 
+function traverseHTML (htmlStructure) {
+    let textContent = [];
 
 
-function getAllPlainTextFromHTML(htmlText) {
+    function dfs (root) {
+        const nodes = root.childNodes;
+        if (nodes.length === 0) {
+            textContent = textContent + [root.textContent];
+        }
+
+        const fullTag = root.outerHTML;
+        // If the tag contains Katex
+        if (getTagKatexContentFromFullTag(fullTag) !== null) {
+            for (const node of nodes) {
+                dfs(node);
+            }
+        } else {  // case which it is of Katex tag
+
+            // Need to extract the format 'block' or 'inline'
+            // Need to extract the laTex from the textContent
+            // Need to format the laTex based on format
+
+        }
+    
+
+    }
 
 }
 
+// This matches the Katex Instance:
+function getTagKatexContentFromFullTag(fullTag) {
+    const regex = /<[^>]*class\s*=\s*"katex[^"]*"[^>]*>/s;
+    const match = fullTag.match(regex);
+    return match ? match[0] : null;
+}
+
+
+// Extract the latex from textContent
+function extractLatex() {
+    pass
+}
+
+
+// add $ $ or $$ $$ based on format block or inline
+function formatLaTex(laTex, format) {
+    if (format === "inline") {
+        return "$" + laTex + "$";
+    } else if  (format === "inline") {
+        return "$$" + laTex + "$$";
+    } else {
+        throw new Error("Format is not recognized!"); 
+    }
+}
+
+
+function retrieveFormatFromKatexTag(katexTag) {
+    if (katexTag.includes("katex-display")) {
+        return "block";
+    } else if (katexTag.includes("katex")) {
+        return "inline";
+    }
+    throw new Error("The tag does not include class 'Katex' or 'Katex-display', format unrecognized!")
+}
 
 
 function removeAllKatex (htmlBody) {
@@ -112,7 +169,6 @@ function generateUniqueString() {
 // !!!! UI requirements:
 // We need a top layer UI that pops up when the user first launch the chrome extension.
 // Ideally we also need some kind of interactive UI on the side that is collapsible.
-
 
 // !!!! Additional Considerations:
 // auto-launch.
