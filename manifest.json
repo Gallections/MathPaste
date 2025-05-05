@@ -9,6 +9,9 @@
         "clipboardRead",
         "clipboardWrite"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
@@ -18,6 +21,14 @@
     "action": {
         "default_title": "Math Paste",
         "default_popup": "popup.html"
+    },
+    "commands": {
+        "toggle-math-paste": {
+            "suggested_key": {
+                "default": "Ctrl+M",
+                "mac": "Command+M"
+            },
+            "description": "Toggle math-paste on/off"
+        }
     }
-
   }

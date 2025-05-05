@@ -1,28 +1,36 @@
 console.log("This is a proof that the content script is running!");
 
 
-// Listens for copy events
-document.addEventListener("copy", async (event) => {
-    const htmls = await getClipBoardHTML();
-    // const plain = await getClipBoardPlainText();
-    console.log("-------- the HTMLS Structural version -------");
-    console.log(htmls);
 
-    const plain = await getClipBoardPlainText();
-    console.log('------ the is the plain text version ---------');
-    console.log(plain);
+let isActive = false;
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.toggle !== undefined) {
+        isActive = message.toggle;
 
-    // const htmlString = await getClipBoardHTMLString();
-    // console.log("-------- the HTMLS String version -------");
-    // console.log(htmlString);
-
-    // console.log("-------- the children of the HTML -------");
-    // console.log(removeAllKatex(htmls))
-
-    console.log("-------- try traversing through the HTML strucutre ------");
-    const newClipboardContent = traverseHTML(htmls);
-    await modifyClipboard(newClipboardContent);
+        if (isActive) {
+            document.addEventListener("copy", setUpMathPaste)
+        } else {
+            document.removeEventListener("copy", setUpMathPaste);
+        }
+    }
 })
+
+
+async function setUpMathPaste() {
+    const htmls = await getClipBoardHTML();
+        // const plain = await getClipBoardPlainText();
+        console.log("-------- the HTMLS Structural version -------");
+        console.log(htmls);
+
+        const plain = await getClipBoardPlainText();
+        console.log('------ the is the plain text version ---------');
+        console.log(plain);
+
+        console.log("-------- try traversing through the HTML strucutre wrapped ------");
+        const newClipboardContent = traverseHTMLWrapped(htmls);
+        await modifyClipboard(newClipboardContent);
+}
+
 
 
 // This function extracts the nested HTML strucutre from the clipBoard
@@ -35,7 +43,6 @@ async function getClipBoardHTML() {
         if (item.types.includes("text/html")) {
             const blob = await item.getType("text/html");
             const copiedText = await blob.text();
-            // console.log("The copied text in HTML is ", copiedText);
 
             const parser = new DOMParser();
             const doc = parser.parseFromString(copiedText, "text/html");
@@ -56,7 +63,6 @@ async function getClipBoardHTMLString() {
         if (item.types.includes("text/html")) {
             const blob = await item.getType("text/html");
             const copiedText = await blob.text();
-            // console.log("The copied text in HTML is ", copiedText);
             htmlTexts.push(copiedText);
         }
     }
@@ -72,7 +78,8 @@ async function getClipBoardPlainText() {
 }
 
 
-function traverseHTML (htmlStructure) {
+// This wrapped version ensures auto-render compatibility with Obsidian and Notion
+function traverseHTMLWrapped (htmlStructure) {
     const startTime = Date.now();
 
     let textContent = [];
@@ -101,13 +108,51 @@ function traverseHTML (htmlStructure) {
             // Approach: leverage annotation tags (succeed)
             const mathTextContent = root.outerHTML;
             const latexMathContent = extractLatexFromAnnotations(mathTextContent);
-            // console.log("math latex: ", latexMathContent);
             const displayFormat = retrieveFormatFromKatexTag(kaTexTag);
             const formattedLatex = formatLaTex(latexMathContent, displayFormat);
-            // console.log("Formatted Katex: ", formattedLatex);
 
             textContent = textContent + [formattedLatex];
-            // textContent = textContent + formattedLatex;
+        }    
+
+        return textContent
+    }
+    return dfs(htmlStructure)
+
+}
+
+
+// This provides a way to retreive the latex form from the rendered math equation.
+function traverseHTMLLatex (htmlStructure) {
+    const startTime = Date.now();
+
+    let textContent = [];
+
+    function dfs (root) {
+        if (Date.now() - startTime > 3000) {
+            throw new Error("The nested HTML strucutre is infinite!");
+        }
+        if (!root) {
+            return;
+        }
+
+        const nodes = root.childNodes;
+        if (nodes.length === 0) {
+            textContent = textContent + [root.textContent];
+            return;
+        }
+
+        const fullTag = extractFullTag(root.outerHTML);
+        const kaTexTag = getTagKatexContentFromFullTag(fullTag);
+        if (kaTexTag === null) {
+            for (const node of nodes) {
+                dfs(node);
+            }
+        } else {  
+            // Approach: leverage annotation tags (succeed)
+            const mathTextContent = root.outerHTML;
+            const latexMathContent = extractLatexFromAnnotations(mathTextContent);
+
+            textContent = textContent + [latexMathContent];
         }    
 
         return textContent
@@ -219,16 +264,9 @@ function generateUniqueString() {
     });
 }
 
-
-// !!!!  Functional Requirements (updated)
-// 1. I need a function that loop through the HTML structure and effectively obtains all the textContent, 
-// while also determine the positions of the katex, probably a recursive function (done)
-
-// 2. A function that recognizes the latex version from the katex math content (done)
-
-// 3. A function that recognizes the inline or block display and modify the katex textContent with $ $, or $$ $$ (done)
-
-// 4. A function that modifies the clipBoard (done)
+// !!!! Functional Requirements:
+// 1. provide a version that gives you the unwrapped latex version. (done)
+// 2. make a keyboard shortcut in GPT that allows you to enable the extension (Ctrl + M)
 
 
 
