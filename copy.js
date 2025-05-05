@@ -263,18 +263,3 @@ function generateUniqueString() {
         return v.toString(16);
     });
 }
-
-// !!!! Functional Requirements:
-// 1. provide a version that gives you the unwrapped latex version. (done)
-// 2. make a keyboard shortcut in GPT that allows you to enable the extension (Ctrl + M)
-
-
-
-// !!!! UI requirements:
-// We need a top layer UI that pops up when the user first launch the chrome extension.
-// Ideally we also need some kind of interactive UI on the side that is collapsible.
-
-// !!!! Additional Considerations:
-// auto-launch.
-// Cache.
-// Auto math equation detection from the page.
