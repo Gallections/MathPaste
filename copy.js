@@ -8,18 +8,20 @@ document.addEventListener("copy", async (event) => {
     console.log("-------- the HTMLS Structural version -------");
     console.log(htmls);
 
-    const htmlString = await getClipBoardHTMLString();
-    console.log("-------- the HTMLS String version -------");
-    console.log(htmlString);
+    const plain = await getClipBoardPlainText();
+    console.log('------ the is the plain text version ---------');
+    console.log(plain);
 
-    console.log("-------- the children of the HTML -------");
-    console.log(removeAllKatex(htmls))
+    // const htmlString = await getClipBoardHTMLString();
+    // console.log("-------- the HTMLS String version -------");
+    // console.log(htmlString);
 
-    // const latexes =  extractLaTex(htmls);
-    // const formats = extractFormats(htmls);
-    // const formattedLatex = latexFormatter(latexes, formats);
-    // insertLatexIntoText(formattedLatex, plain);
-    // latexPrinter(formattedLatex);
+    // console.log("-------- the children of the HTML -------");
+    // console.log(removeAllKatex(htmls))
+
+    console.log("-------- try traversing through the HTML strucutre ------");
+    const newClipboardContent = traverseHTML(htmls);
+    await modifyClipboard(newClipboardContent);
 })
 
 
@@ -71,45 +73,108 @@ async function getClipBoardPlainText() {
 
 
 function traverseHTML (htmlStructure) {
+    const startTime = Date.now();
+
     let textContent = [];
 
-
     function dfs (root) {
+        if (Date.now() - startTime > 3000) {
+            throw new Error("The nested HTML strucutre is infinite!");
+        }
+        if (!root) {
+            return;
+        }
+
         const nodes = root.childNodes;
         if (nodes.length === 0) {
             textContent = textContent + [root.textContent];
+            return;
         }
 
-        const fullTag = root.outerHTML;
-        // If the tag contains Katex
-        if (getTagKatexContentFromFullTag(fullTag) !== null) {
+        const fullTag = extractFullTag(root.outerHTML);
+        const kaTexTag = getTagKatexContentFromFullTag(fullTag);
+        if (kaTexTag === null) {
             for (const node of nodes) {
                 dfs(node);
             }
-        } else {  // case which it is of Katex tag
+        } else {  
+            // Approach: leverage annotation tags (succeed)
+            const mathTextContent = root.outerHTML;
+            const latexMathContent = extractLatexFromAnnotations(mathTextContent);
+            // console.log("math latex: ", latexMathContent);
+            const displayFormat = retrieveFormatFromKatexTag(kaTexTag);
+            const formattedLatex = formatLaTex(latexMathContent, displayFormat);
+            // console.log("Formatted Katex: ", formattedLatex);
 
-            // Need to extract the format 'block' or 'inline'
-            // Need to extract the laTex from the textContent
-            // Need to format the laTex based on format
+            textContent = textContent + [formattedLatex];
+            // textContent = textContent + formattedLatex;
+        }    
 
-        }
-    
-
+        return textContent
     }
+    return dfs(htmlStructure)
 
 }
 
 // This matches the Katex Instance:
 function getTagKatexContentFromFullTag(fullTag) {
+    if (fullTag === null) {
+        return null;
+    }
     const regex = /<[^>]*class\s*=\s*"katex[^"]*"[^>]*>/s;
     const match = fullTag.match(regex);
     return match ? match[0] : null;
 }
 
+// This finds the tag from the html strucutre
+function extractFullTag(outerHTML) {
+    const regex = /^<[^>]+?>/;
+    const firstTag = outerHTML.match(regex);
+    if (firstTag) {
+        return firstTag[0];
+    } else {
+        throw new Error("There are no tags in the outerHTML!");
+    }
+}
 
-// Extract the latex from textContent
-function extractLatex() {
-    pass
+// Working function that extracts the latex from annotation tags
+// Premise: the rendered math equation must meet global accessibility condition and includes a 
+// pair of <annotaiton> tags.
+function extractLatexFromAnnotations(katexOuterHTML) {
+    const regex = /<annotation\b[^>]*>(.*?)<\/annotation>/gs;
+    const matches = katexOuterHTML.match(regex);
+    if (matches) {
+        return matches.map(match => match.replace(/<\/?annotation[^>]*>/g, ''))[0];
+    }
+    throw new Error("There is no annotation tags in the content.");
+}
+
+
+// Extract the latex from textContent, attempting the fallback == plain approach.
+// Temporary not being adopted due to pattern inconsistency.
+function extractKatexLatex(mathTextContent) {
+    // The core of this function is to realize that the textContent property, when applied onto 
+    // rendered math equations, its fallback and plain text is exactly the same, one at the end and one 
+    // at the start. So what we need to do is to figure out when the fallback starts and when the plain 
+    // text ends. 
+    // This limits the scope to only GPT like copy use cases.
+    console.log(mathTextContent);
+    let l = 1;
+    const len = mathTextContent.length;
+    console.log("start of finding the latex ---------");
+
+    let longest = ""
+    while (l <= len/2) {
+        const prefix = mathTextContent.slice(0, l);
+        const suffix = mathTextContent.slice(len - l,);
+
+        if (prefix === suffix) {
+            longest = mathTextContent.slice(l, len-l);
+            console.log("longest: ", longest);
+        }
+        l ++;
+    }
+    return longest;
 }
 
 
@@ -117,7 +182,7 @@ function extractLatex() {
 function formatLaTex(laTex, format) {
     if (format === "inline") {
         return "$" + laTex + "$";
-    } else if  (format === "inline") {
+    } else if  (format === "block") {
         return "$$" + laTex + "$$";
     } else {
         throw new Error("Format is not recognized!"); 
@@ -135,13 +200,14 @@ function retrieveFormatFromKatexTag(katexTag) {
 }
 
 
-function removeAllKatex (htmlBody) {
-    
-    
-    for (const child of childNodes) {
-        console.log(child.textContent)
+async function modifyClipboard(modifedText) {
+    try {
+        await navigator.clipboard.writeText(modifedText);
+        console.log("Clipboard successfully updated with new content!");
+        console.log("new clipboard content: ", modifedText);
+    } catch (err) {
+        console.error("Failed to modify clipboard: ", err);
     }
-
 }
 
 
@@ -156,13 +222,13 @@ function generateUniqueString() {
 
 // !!!!  Functional Requirements (updated)
 // 1. I need a function that loop through the HTML structure and effectively obtains all the textContent, 
-// while also determine the positions of the katex, probably a recursive function
+// while also determine the positions of the katex, probably a recursive function (done)
 
-// 2. A function that recognizes the latex version from the katex math content
+// 2. A function that recognizes the latex version from the katex math content (done)
 
-// 3. A function that recognizes the inline or block display and modify the katex textContent with $ $, or $$ $$
+// 3. A function that recognizes the inline or block display and modify the katex textContent with $ $, or $$ $$ (done)
 
-// 4. A function that modifies the clipBoard
+// 4. A function that modifies the clipBoard (done)
 
 
 
