@@ -1,7 +1,5 @@
 console.log("This is a proof that the content script is running!");
 
-
-
 let isActive = false;
 chrome.runtime.onMessage.addListener((message) => {
     if (message.toggle !== undefined) {

@@ -1,0 +1,76 @@
+/* --------- Toggle options container ---------- */
+#toggle-options-container {
+    position: fixed;
+    /* width: 50px; */
+    top: 100px;
+    right:20px;
+    padding: 10px;
+    display:flex;
+    flex-wrap:wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap:5px;
+    z-index: 9999999;
+    border:1px solid black;
+}
+
+/* --------- Toggle Section --------- */
+#toggle {
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background-color:white;
+    z-index:9999999;
+    cursor:pointer;
+    border: 3px solid rgba(79, 78, 78, 0.089)
+}
+
+#toggle:hover{
+    transition:all;
+    border-color: #74AA9C;
+}
+
+
+/* --------- Options Section ---------- */
+.option {
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background-color: white;
+    z-index:9999999;
+    cursor: pointer;
+    text-align: center;
+    align-items: center;
+    /* display:flex; */
+    justify-content: center;
+    border: 2px solid rgba(79, 78, 78, 0.089);
+    display:none;
+}
+
+.option:hover{
+    transition: all 0.3s ease-in-out;
+    transform: scale(1.1);
+    border: 2px solid #74AA9C;
+}
+
+#Obsidian {
+    width:80%;
+    height: 80%;
+}
+
+#Notion {
+    width:60%;
+    height: 60%;
+}
+
+#LaTex {
+    width:80%;
+    height: 80%;
+}
+
+#None {
+    width:80%;
+    height: 80%;
+}
+
