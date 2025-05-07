@@ -11,29 +11,34 @@
     align-items: center;
     justify-content: center;
     gap:5px;
-    z-index: 9999999;
-    border:1px solid black;
+    z-index: 9999900;
+}
+
+#toggle-options-container:hover {
+    transition:all 3s ease-in-out;
 }
 
 /* --------- Toggle Section --------- */
-#toggle {
+#toggle-math-paste {
     width:50px;
     height:50px;
     border-radius:50%;
     background-color:white;
     z-index:9999999;
     cursor:pointer;
-    border: 3px solid rgba(79, 78, 78, 0.089)
+    border: 3px solid rgba(79, 78, 78, 0.089);
+    display:flex;
+    align-items: center;
+    justify-content: center;
 }
 
-#toggle:hover{
+#toggle-math-paste:hover{
     transition:all;
     border-color: #74AA9C;
 }
 
-
 /* --------- Options Section ---------- */
-.option {
+.option-math-paste {
     width:40px;
     height:40px;
     border-radius:50%;
@@ -42,13 +47,13 @@
     cursor: pointer;
     text-align: center;
     align-items: center;
-    /* display:flex; */
+    display: none;
     justify-content: center;
     border: 2px solid rgba(79, 78, 78, 0.089);
-    display:none;
+    /* display:none; */
 }
 
-.option:hover{
+.option-math-paste:hover{
     transition: all 0.3s ease-in-out;
     transform: scale(1.1);
     border: 2px solid #74AA9C;

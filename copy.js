@@ -25,7 +25,7 @@ async function setUpMathPaste() {
         console.log(plain);
 
         console.log("-------- try traversing through the HTML strucutre wrapped ------");
-        const newClipboardContent = traverseHTMLWrapped(htmls);
+        const newClipboardContent = traverseHTMLLatex(htmls);
         await modifyClipboard(newClipboardContent);
 }
 
