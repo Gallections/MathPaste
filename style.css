@@ -1,7 +1,7 @@
 /* --------- Toggle options container ---------- */
 #toggle-options-container {
     position: fixed;
-    /* width: 50px; */
+    width: 70px;
     top: 100px;
     right:20px;
     padding: 10px;
@@ -12,11 +12,34 @@
     justify-content: center;
     gap:5px;
     z-index: 9999900;
+    /* border: 1px solid black; */
 }
 
 #toggle-options-container:hover {
-    transition:all 3s ease-in-out;
+    /* transition:all 3s ease-in-out; */
+    /* cursor:url("icons/drag.png"), auto; */
 }
+
+
+/* --------- Cancel Button ---------- */
+#cancel-button-math-paste {
+    position:absolute;
+    top:2px;
+    right:2px;
+    width: 15px;
+    height: 15px;
+    padding: 1px;
+    z-index: 9999999;
+    cursor: pointer;
+}
+
+#cancel-math-paste {
+    width:90%;
+    height:90%;
+    z-index: 9999999;
+    opacity: 0.6;
+}
+
 
 /* --------- Toggle Section --------- */
 #toggle-math-paste {
@@ -36,6 +59,7 @@
     transition:all;
     border-color: #74AA9C;
 }
+
 
 /* --------- Options Section ---------- */
 .option-math-paste {
@@ -65,8 +89,8 @@
 }
 
 #Notion {
-    width:60%;
-    height: 60%;
+    width:55%;
+    height: 55%;
 }
 
 #LaTex {

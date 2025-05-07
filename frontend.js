@@ -1,16 +1,37 @@
+// ------------ global declarations --------------
 const OPTIONS = {"Obsidian": "icons/obsidian.png", 
     "Notion": "icons/notion.png", 
     "LaTex": "icons/latex.svg", 
     "None": "icons/none.png"}
-console.log("style injected!")
 
-const observer = new MutationObserver(() => {
-    inject();
-});
-observer.observe(document.body, { childList: true, subtree: true });
-inject();
+let showUI = false;
+let isActiveContent = false;
+let observer = null;
 
+// inject();
+// toggleUI();
 
+// -------------- communication ------------------------
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.toggle !== undefined) {
+        isActiveContent = message.toggle;
+
+        if (isActiveContent) {
+            observer = new MutationObserver(() => {
+                inject();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            inject();
+            toggleUI();
+        } else {
+           destroyUI();
+           observer.disconnect(); // <- this stops the observer;
+           observer = null;
+        }
+    }
+})
+
+// --------------- Content Injections -------------------
 async function inject() {
     if (document.getElementById("toggle-math-paste")) return
     const toggle = createMainToggle();
@@ -23,6 +44,25 @@ async function inject() {
     addHoverListenerToToggleContainer();
 }
 
+function toggleUI() {
+    document.addEventListener("keydown", function (event) {
+        if (event.altKey && event.key.toLowerCase() === "m") {
+            if (showUI) {
+                const toggleContainer = document.getElementById("toggle-options-container");
+                toggleContainer.style.display = "none";
+            } else {
+                const toggleContainer = document.getElementById("toggle-options-container");
+                toggleContainer.style.display = "flex";
+            }
+            showUI = !showUI;
+        }
+    });
+}
+
+function destroyUI() {
+    document.getElementById("toggle-options-container").remove();
+}
+
 // ---------- Toggle and Options container -----------
 function createToggleContainer (toggle, options) {
     const container = document.createElement("div");
@@ -31,13 +71,15 @@ function createToggleContainer (toggle, options) {
     for (const option of options) {
         container.appendChild(option);
     }
+    const cancelButton = createCancelButton();
+    container.appendChild(cancelButton);
+    makeDraggable(container);
     document.body.appendChild(container);
 }
 
 function addHoverListenerToToggleContainer() {
     const toggle = document.getElementById("toggle-options-container");
     const options = document.querySelectorAll(".option-math-paste");
-    console.log(options)
     if (!toggle) {
         throw new Error("Toggle has not been created yet!");
     }
@@ -53,9 +95,57 @@ function addHoverListenerToToggleContainer() {
     })
 }
 
-
 // --------- Cancel Button ---------------------
+function createCancelButton() {
+    const cancelButton = document.createElement("div");
+    cancelButton.id = "cancel-button-math-paste";
+    const cancelImage = document.createElement("img");
+    cancelImage.src = chrome.runtime.getURL("icons/cancel.png");
+    cancelImage.alt = "cancel";
+    cancelImage.id = "cancel-math-paste";
+    cancelButton.appendChild(cancelImage);
 
+    addOnClickListenerForCancelButton(cancelButton);
+
+    return cancelButton;
+}
+
+function addOnClickListenerForCancelButton(button) {
+    button.addEventListener("click", ()=> {
+        const toggleContainer = document.getElementById("toggle-options-container");
+        toggleContainer.style.display = "none";
+    })
+}
+
+// ------------- make Draggabel -------------------
+
+function makeDraggable(toggleContainer) {
+
+    toggleContainer.addEventListener("mouseenter", ()=> {
+        toggleContainer.style.cursor = `url(${chrome.runtime.getURL("icons/drag.png")}), auto`;
+    })
+
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    toggleContainer.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    offsetX = e.clientX - toggleContainer.offsetLeft;
+    offsetY = e.clientY - toggleContainer.offsetTop;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+        toggleContainer.style.left = `${e.clientX - offsetX}px`;
+        toggleContainer.style.top = `${e.clientY - offsetY}px`;
+    }
+    });
+
+    document.addEventListener('mouseup', () => {
+    isDragging = false;
+    });
+}
 
 
 // -------- Toggle Section --------------------
@@ -85,9 +175,10 @@ function styleToggleOnOptions(toggle) {
         imgInsertion.id = imgId;
         imgInsertion.src = chrome.runtime.getURL(OPTIONS[imgId]);
         toggle.appendChild(imgInsertion);
-    } else {
-        console.log("toggle don't exist!");
-    }
+    } 
+    // else {
+    //     console.log("toggle don't exist!");
+    // }
 }
 
 function helperImageNameExtraction(classname) {
@@ -98,7 +189,6 @@ function helperImageNameExtraction(classname) {
     const slicedClassname = classname.slice(firstIndex, );
     const secondIndex = slicedClassname.indexOf('-');
     const res = classname.slice(firstIndex, firstIndex + secondIndex);
-    console.log(res);
     return res;
 }
 
@@ -131,7 +221,6 @@ function addOnClickListenerForOption(option, toggle) {
     if (toggle) {
         option.addEventListener("click", () => {
             const imgId = option.children[0].id;
-            console.log(imgId)
             toggle.className =`toggled-${imgId}-math-paste`;
             styleToggleOnOptions(toggle);
         })
@@ -148,10 +237,7 @@ function positionOptions(options) {
     }
 }
 
-
 // Functional Requirements:
-// 1. make the toggle draggable (not started)
-// 2. make the toggle collapssible, that goes to the side of the panel and can be revisited by clicking an arrow on the side. (not started).
-// 3. make the three different options. (done)
-// 4. Finish up the logic
-// 5. Make sure peak UX
+// 1. need to make functions to remove all event listeners in UI
+// 2. need to set up switching logic
+// 3. Testing

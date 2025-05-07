@@ -6,12 +6,18 @@ chrome.runtime.onMessage.addListener((message) => {
         isActive = message.toggle;
 
         if (isActive) {
-            document.addEventListener("copy", setUpMathPaste)
+            document.addEventListener("copy", setUpMathPaste);
+            // sendUIDestroyMessage("Revivie math paste UI!");
         } else {
             document.removeEventListener("copy", setUpMathPaste);
+            // sendUIDestroyMessage("Destroy math paste UI!");
         }
     }
 })
+
+function sendUIDestroyMessage(message) {
+    chrome.runtime.sendMessage({action: message, data: isActive});
+}
 
 
 async function setUpMathPaste() {
