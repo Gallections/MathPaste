@@ -31,6 +31,7 @@ chrome.runtime.onMessage.addListener((message) => {
     }
 })
 
+
 // --------------- Content Injections -------------------
 async function inject() {
     if (document.getElementById("toggle-math-paste")) return
@@ -45,22 +46,29 @@ async function inject() {
 }
 
 function toggleUI() {
-    document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key.toLowerCase() === "m") {
-            if (showUI) {
-                const toggleContainer = document.getElementById("toggle-options-container");
-                toggleContainer.style.display = "none";
-            } else {
-                const toggleContainer = document.getElementById("toggle-options-container");
-                toggleContainer.style.display = "flex";
-            }
-            showUI = !showUI;
+    document.addEventListener("keydown", altMListener);
+}
+
+function removeAltMListener() {
+    document.removeEventListener("keydown", altMListener);
+}
+
+function altMListener(event) {
+    if (event.altKey && event.key.toLowerCase() === "m") {
+        if (showUI) {
+            const toggleContainer = document.getElementById("toggle-options-container");
+            toggleContainer.style.display = "none";
+        } else {
+            const toggleContainer = document.getElementById("toggle-options-container");
+            toggleContainer.style.display = "flex";
         }
-    });
+        showUI = !showUI;
+    }
 }
 
 function destroyUI() {
     document.getElementById("toggle-options-container").remove();
+    removeAltMListener();
 }
 
 // ---------- Toggle and Options container -----------
@@ -223,10 +231,16 @@ function addOnClickListenerForOption(option, toggle) {
             const imgId = option.children[0].id;
             toggle.className =`toggled-${imgId}-math-paste`;
             styleToggleOnOptions(toggle);
+            sendMessageForFunctionChange(imgId);
         })
     } else {
         console.log("Toggle is not found!");
     }   
+}
+
+
+function sendMessageForFunctionChange(imgId) {
+    chrome.runtime.sendMessage({action: "functionChange", imgId: imgId})
 }
 
 function positionOptions(options) {

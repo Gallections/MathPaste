@@ -1,38 +1,52 @@
 console.log("This is a proof that the content script is running!");
 
-let isActive = false;
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.toggle !== undefined) {
-        isActive = message.toggle;
-
-        if (isActive) {
-            document.addEventListener("copy", setUpMathPaste);
-            // sendUIDestroyMessage("Revivie math paste UI!");
-        } else {
-            document.removeEventListener("copy", setUpMathPaste);
-            // sendUIDestroyMessage("Destroy math paste UI!");
-        }
-    }
-})
-
-function sendUIDestroyMessage(message) {
-    chrome.runtime.sendMessage({action: message, data: isActive});
+const optionToFunction = {
+    "Obsidian": traverseHTMLWrapped,
+    "Notion": traverseHTMLWrapped,
+    "LaTex": traverseHTMLLatex,
+    "None": null
 }
 
+let isActive = false;
+let listener = null;
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
-async function setUpMathPaste() {
+    if (message.imgId !== undefined) {
+        // console.log("imagId listner gets triggered")
+        if (isActive) {
+            document.removeEventListener("copy", listener)
+            // console.log("----------- imgID------------", message.imgId)
+            listener = (event)=> setUpMathPaste(message.imgId);
+            document.addEventListener("copy", listener);
+        }
+    }
+
+    // console.log("Copy.js is listening");
+    if (message.toggle !== undefined) {
+        isActive = message.toggle;
+        listener = () => setUpMathPaste(null);
+        if (isActive) {
+            document.addEventListener("copy", listener);
+        } else {
+            document.removeEventListener("copy", listener);
+        }
+    }
+
+})
+
+async function setUpMathPaste(imgId) {
     const htmls = await getClipBoardHTML();
         // const plain = await getClipBoardPlainText();
         console.log("-------- the HTMLS Structural version -------");
         console.log(htmls);
 
         const plain = await getClipBoardPlainText();
-        console.log('------ the is the plain text version ---------');
-        console.log(plain);
 
-        console.log("-------- try traversing through the HTML strucutre wrapped ------");
-        const newClipboardContent = traverseHTMLLatex(htmls);
-        await modifyClipboard(newClipboardContent);
+        const func = optionToFunction[imgId];
+        if (func) {
+            const newClipboardContent = func(htmls);
+            await modifyClipboard(newClipboardContent);
+        }        
 }
 
 
@@ -77,7 +91,7 @@ async function getClipBoardHTMLString() {
 // THis aims to extract the plain text from the clipboard, used as a helper function
 async function getClipBoardPlainText() {
     let clipBoardPlainText = await navigator.clipboard.readText();
-    console.log("The copied text in plain is ", clipBoardPlainText)
+    // console.log("The copied text in plain is ", clipBoardPlainText)
     return clipBoardPlainText;
 }
 
@@ -248,7 +262,7 @@ function retrieveFormatFromKatexTag(katexTag) {
     throw new Error("The tag does not include class 'Katex' or 'Katex-display', format unrecognized!")
 }
 
-
+// !!!! You can try to add a new message to the screen about successful copy?
 async function modifyClipboard(modifedText) {
     try {
         await navigator.clipboard.writeText(modifedText);

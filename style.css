@@ -20,7 +20,6 @@
     /* cursor:url("icons/drag.png"), auto; */
 }
 
-
 /* --------- Cancel Button ---------- */
 #cancel-button-math-paste {
     position:absolute;
@@ -102,4 +101,3 @@
     width:80%;
     height: 80%;
 }
-
