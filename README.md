@@ -10,8 +10,7 @@ Your GO-TO way to translate math from AI Chatbots to online Notebooks!
 - [Tech Stack](#tech-stack)
 
 ## Demo
-<iframe width="560" height="315" src="https://www.youtube.com/watch?v=m4J2uIUJ6IE" 
-frameborder="0" allowfullscreen></iframe>
+[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 
 ## Getting Started
 This chrome extension is under refinement, will be uploaded to Chrome Extension soon! For users who wants an early start, follow the instructions below!
