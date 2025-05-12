@@ -1,6 +1,9 @@
 # Math Paste
 Your GO-TO way to translate math from AI Chatbots to online Notebooks!
 
+## Demo
+[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
+
 ## Table of Contents:
 - [Demo](#demo)
 - [Getting Started](#getting-started)
@@ -8,9 +11,6 @@ Your GO-TO way to translate math from AI Chatbots to online Notebooks!
   - [Installation](#installation)
 - [Usage](#usage)
 - [Tech Stack](#tech-stack)
-
-## Demo
-[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 
 ## Getting Started
 This chrome extension is under refinement, will be uploaded to Chrome Extension soon! For users who wants an early start, follow the instructions below!
