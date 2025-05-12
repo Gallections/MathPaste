@@ -1,15 +1,23 @@
 # Math Paste
-Your goto Chrome Extension for copying math equations from GPT to your note taking software!
+Your GO-TO way to translate math from AI Chatbots to online Notebooks!
 
 ## Table of Contents:
+- [Demo](#demo)
 - [Getting Started](#getting-started)
+  - [Chrome Extension](#chrome-extension)
   - [Installation](#installation)
 - [Usage](#usage)
-- [Demo](#demo)
 - [Tech Stack](#tech-stack)
+
+## Demo
+<iframe width="560" height="315" src="https://www.youtube.com/watch?v=m4J2uIUJ6IE" 
+frameborder="0" allowfullscreen></iframe>
 
 ## Getting Started
 This chrome extension is under refinement, will be uploaded to Chrome Extension soon! For users who wants an early start, follow the instructions below!
+
+### Chrome Extension
+This product will be found on chrome extension store soon!
 
 ### Installation
 <b></b>
@@ -40,10 +48,6 @@ git clone https://github.com/Gallections/MathPaste.git
 8. Paste the content into the software you chose! And the text will be automatically formatted in your software!
 9. Press Alt + M to hide the UI, and Alt + M again to show the UI!
 10. Press Ctrl + M or Cmd + M to launch or stop the extension!
-
-
-## Demo
-A video demonstartion is comming soon!
 
 ## Tech Stack
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
