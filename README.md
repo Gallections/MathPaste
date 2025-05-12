@@ -39,14 +39,14 @@ git clone https://github.com/Gallections/MathPaste.git
 1. Click on the extension icon to launch the extension.
 
 2. Open ChatGPT in Google Browser. 
-3. Press Ctrl + M for windows or cmd + M for mac users to load the extension in chatGPT.
+3. Press `Ctrl + M` for windows or `Cmd + M` for mac users to load the extension in chatGPT.
 4. A small UI will appear in the top right corner, hover over to select options.
 5. Currently, the extension supports three format : Notion, Obsidian, and vanilla LaTex.
 6. Select the option and start copy and paste the rendered math equations from GPT.
 7. NOTE: copy the rendered math equations from top to bottom, not left to right.
 8. Paste the content into the software you chose! And the text will be automatically formatted in your software!
-9. Press Alt + M to hide the UI, and Alt + M again to show the UI!
-10. Press Ctrl + M or Cmd + M to launch or stop the extension!
+9. Press `Alt + M` to hide the UI, and `Alt + M` again to show the UI!
+10. Press `Ctrl + M` or `Cmd + M` to launch or stop the extension!
 
 ## Tech Stack
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
