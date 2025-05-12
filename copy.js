@@ -1,10 +1,10 @@
-console.log("This is a proof that the content script is running!");
+// console.log("This is a proof that the content script is running!");
 
 const optionToFunction = {
-    "Obsidian": traverseHTMLWrapped,
-    "Notion": traverseHTMLWrapped,
-    "LaTex": traverseHTMLLatex,
-    "None": null
+    "math_paste_Obsidian": traverseHTMLWrapped,
+    "math_paste_Notion": traverseHTMLWrapped,
+    "math_paste_LaTex": traverseHTMLLatex,
+    "math_paste_None": null
 }
 
 let isActive = false;
@@ -23,6 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // console.log("Copy.js is listening");
     if (message.toggle !== undefined) {
+        // console.log("toggle message received")
         isActive = message.toggle;
         listener = () => setUpMathPaste(null);
         if (isActive) {
@@ -36,9 +37,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function setUpMathPaste(imgId) {
     const htmls = await getClipBoardHTML();
-        // const plain = await getClipBoardPlainText();
-        console.log("-------- the HTMLS Structural version -------");
-        console.log(htmls);
+        // console.log("-------- the HTMLS Structural version -------");
+        // console.log(htmls);
 
         const plain = await getClipBoardPlainText();
 
@@ -209,6 +209,7 @@ function extractLatexFromAnnotations(katexOuterHTML) {
     if (matches) {
         return matches.map(match => match.replace(/<\/?annotation[^>]*>/g, ''))[0];
     }
+    window.alert("This platform currenlty is not supproted by Math Paste!");
     throw new Error("There is no annotation tags in the content.");
 }
 
@@ -221,10 +222,10 @@ function extractKatexLatex(mathTextContent) {
     // at the start. So what we need to do is to figure out when the fallback starts and when the plain 
     // text ends. 
     // This limits the scope to only GPT like copy use cases.
-    console.log(mathTextContent);
+    // console.log(mathTextContent);
     let l = 1;
     const len = mathTextContent.length;
-    console.log("start of finding the latex ---------");
+    // console.log("start of finding the latex ---------");
 
     let longest = ""
     while (l <= len/2) {
@@ -266,8 +267,8 @@ function retrieveFormatFromKatexTag(katexTag) {
 async function modifyClipboard(modifedText) {
     try {
         await navigator.clipboard.writeText(modifedText);
-        console.log("Clipboard successfully updated with new content!");
-        console.log("new clipboard content: ", modifedText);
+        // console.log("Clipboard successfully updated with new content!");
+        // console.log("new clipboard content: ", modifedText);
     } catch (err) {
         console.error("Failed to modify clipboard: ", err);
     }

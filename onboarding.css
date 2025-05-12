@@ -1,0 +1,107 @@
+/* Reset some default browser styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Base styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f9f9f9;
+    color: #333;
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 900px;
+    margin: auto;
+}
+
+a {
+    color: #3178C6;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Header */
+.ob-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.ob-header h1 {
+    font-size: 2.5rem;
+    color: #222;
+}
+
+.ob-header p {
+    font-size: 1.1rem;
+    color: #555;
+}
+
+/* Sections */
+section {
+    margin-bottom: 2.5rem;
+}
+
+.section-div {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.demo-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+h2 {
+    color: #222;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+h3 {
+    margin-top: 1rem;
+    color: #444;
+    font-size: 1.2rem;
+}
+
+h5 {
+    color:#444;
+}
+
+ul, ol {
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+li {
+    margin-bottom: 0.5rem;
+}
+
+/* Code and keyboard shortcuts */
+code {
+    background-color: #eaeaea;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.95rem;
+    font-family: monospace;
+    color: #000;
+}
+
+/* Footer */
+.ob-footer {
+    height: 30px;
+}
+
+
+#copy-method{
+    width:90%;
+}

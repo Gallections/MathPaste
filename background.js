@@ -1,5 +1,10 @@
 let extensionEnabled = false;
 
+// chrome.runtime.onInstalled.addListener(() => {
+//     chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+//   });
+  
+
 chrome.commands.onCommand.addListener((command)=> {
     if (command === "toggle-math-paste") {
         extensionEnabled = !extensionEnabled;

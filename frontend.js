@@ -1,8 +1,8 @@
 // ------------ global declarations --------------
-const OPTIONS = {"Obsidian": "icons/obsidian.png", 
-    "Notion": "icons/notion.png", 
-    "LaTex": "icons/latex.svg", 
-    "None": "icons/none.png"}
+const OPTIONS = {"math_paste_Obsidian": "icons/obsidian.png", 
+    "math_paste_Notion": "icons/notion.png", 
+    "math_paste_LaTex": "icons/latex.svg", 
+    "math_paste_None": "icons/none.png"}
 
 let showUI = false;
 let isActiveContent = false;
@@ -181,12 +181,10 @@ function styleToggleOnOptions(toggle) {
         const imgId = helperImageNameExtraction(toggleClassName);
         const imgInsertion = document.createElement('img');
         imgInsertion.id = imgId;
+        // console.log(imgId);
         imgInsertion.src = chrome.runtime.getURL(OPTIONS[imgId]);
         toggle.appendChild(imgInsertion);
     } 
-    // else {
-    //     console.log("toggle don't exist!");
-    // }
 }
 
 function helperImageNameExtraction(classname) {

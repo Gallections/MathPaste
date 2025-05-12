@@ -8,11 +8,18 @@
         "scripting",
         "clipboardRead",
         "clipboardWrite",
-        "storage"
+        "storage",
+        "activeTab", "tabs"
     ],
+    "host_permissions": ["<all_urls>"],
+    "icons": {
+        "16":"icons/favicons/mathPaste-16x16.png",
+        "48":"icons/favicons/mathPaste-48x48.png",
+        "128":"icons/favicons/mathPaste-128x128.png"
+      },
     "web_accessible_resources": [
         {
-            "resources": ["icons/*"],
+            "resources": ["icons/*", "onboarding.html"],
             "matches": ["<all_urls>"]
         }
     ],
@@ -24,12 +31,17 @@
             "matches": ["<all_urls>"],
             "js": ["copy.js", 
                     "frontend.js"],
-            "css": ["style.css"]
+            "css": ["style.css"],
+            "run_at": "document_idle"
         }
     ],
     "action": {
         "default_title": "Math Paste",
-        "default_popup": "popup.html"
+        "default_icon": {
+            "16":"icons/favicons/mathPaste-16x16.png",
+            "48":"icons/favicons/mathPaste-48x48.png",
+            "128":"icons/favicons/mathPaste-128x128.png"
+        }
     },
     "commands": {
         "toggle-math-paste": {
