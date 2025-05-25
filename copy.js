@@ -1,6 +1,4 @@
-console.log("This is a proof that the content script is running!");
-console.log(window.location.hostname);
-
+// console.log("content script is injected!")
 if (typeof optionToFunction === "undefined") {
     var optionToFunction = {
       "math_paste_Obsidian": traverseHTMLWrapped,
@@ -15,9 +13,6 @@ if (typeof optionToFunction === "undefined") {
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
-    // console.log("Message received.")
-
     if (message.imgId !== undefined) {
         if (isActive) {
             document.removeEventListener("copy", listener)
@@ -205,7 +200,6 @@ function extractLatexFromAnnotations(katexOuterHTML) {
     const regex = /<annotation\b[^>]*>(.*?)<\/annotation>/gs;
     const matches = katexOuterHTML.match(regex);
     if (matches) {
-        console.log("matches: ", matches)
         return matches.map(match => match.replace(/<\/?annotation[^>]*>/g, ''))[0];
     }
     if (checkPlatform()) {
@@ -231,10 +225,8 @@ function extractKatexLatex(mathTextContent) {
     // at the start. So what we need to do is to figure out when the fallback starts and when the plain 
     // text ends. 
     // This limits the scope to only GPT like copy use cases.
-    // console.log(mathTextContent);
     let l = 1;
     const len = mathTextContent.length;
-    // console.log("start of finding the latex ---------");
 
     let longest = ""
     while (l <= len/2) {
@@ -276,8 +268,6 @@ function retrieveFormatFromKatexTag(katexTag) {
 async function modifyClipboard(modifedText) {
     try {
         await navigator.clipboard.writeText(modifedText);
-        // console.log("Clipboard successfully updated with new content!");
-        // console.log("new clipboard content: ", modifedText);
     } catch (err) {
         console.error("Failed to modify clipboard: ", err);
     }
