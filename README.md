@@ -4,6 +4,12 @@ Your GO-TO way to translate math from AI Chatbots to online Notebooks!
 ## Demo
 Video Demo:[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 
+## Update (Version 1.1.0)
+### 🐛 Bug Fixes:
+- Bug 0: Content Script injection indeterminism fixed.
+- Bug 1: Add url check of application compatibility.
+
+
 ### UI
 ![image](https://github.com/user-attachments/assets/39883466-f18b-4af9-8873-1ddbaa9a81a5)
 ![image](https://github.com/user-attachments/assets/55a43f64-a1f5-4d0c-9e6f-850383174593)
@@ -15,13 +21,6 @@ Video Demo:[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
   - [Installation](#installation)
 - [Usage](#usage)
 - [Tech Stack](#tech-stack)
-
-
-## Update (Version 1.1.0)
-### 🐛 Bug Fixes:
-- Bug 0: Content Script injection indeterminism fixed.
-- Bug 1: Add url check of application compatibility.
-
 
 ## Getting Started
 This chrome extension is under refinement, will be uploaded to Chrome Extension soon! For users who wants an early start, follow the instructions below!
