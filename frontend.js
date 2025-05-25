@@ -8,9 +8,6 @@ let showUI = false;
 let isActiveContent = false;
 let observer = null;
 
-// inject();
-// toggleUI();
-
 // -------------- communication ------------------------
 chrome.runtime.onMessage.addListener((message) => {
     if (message.toggle !== undefined) {
@@ -248,8 +245,3 @@ function positionOptions(options) {
         position += 50;
     }
 }
-
-// Functional Requirements:
-// 1. need to make functions to remove all event listeners in UI
-// 2. need to set up switching logic
-// 3. Testing

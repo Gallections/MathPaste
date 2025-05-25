@@ -1,4 +1,4 @@
-# Math Paste
+# Math Paste (1.1.0)
 Your GO-TO way to translate math from AI Chatbots to online Notebooks!
 
 ## Demo
@@ -16,11 +16,19 @@ Video Demo:[🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 - [Usage](#usage)
 - [Tech Stack](#tech-stack)
 
+
+## Update (Version 1.1.0)
+### 🐛 Bug Fixes:
+- Bug 0: Content Script injection indeterminism fixed.
+- Bug 1: Add url check of application compatibility.
+
+
 ## Getting Started
 This chrome extension is under refinement, will be uploaded to Chrome Extension soon! For users who wants an early start, follow the instructions below!
 
 ### Chrome Extension
 This product will be found on chrome extension store soon!
+
 
 ### Installation
 <b></b>
@@ -35,15 +43,19 @@ git clone https://github.com/Gallections/MathPaste.git
 
 3. Upload the cloned project folder into the through "load unpacked" button.
 
-4. Start using the extension by clicking the extension icon!
+4. Start using the extension by clicking the extension icon.
+
+5. Refresh the current tab and press <code>Ctrl/Cmd + M</code> to fully launch the extension.
+
+6. Good luck making math notes!
+
 
 
 ## Usage
-<b>Demonstration Video in development</b>
+### User Guide
 1. Click on the extension icon to launch the extension.
-
-2. Open ChatGPT in Google Browser. 
-3. Press `Ctrl + M` for windows or `Cmd + M` for mac users to load the extension in chatGPT.
+2. Open ChatGPT or other supported AI Chatbot in Google Browser. 
+3. Press `Ctrl + M` for windows or `Cmd + M` for mac users to load the extension in Chat.
 4. A small UI will appear in the top right corner, hover over to select options.
 5. Currently, the extension supports three format : Notion, Obsidian, and vanilla LaTex.
 6. Select the option and start copy and paste the rendered math equations from GPT.
@@ -51,6 +63,13 @@ git clone https://github.com/Gallections/MathPaste.git
 8. Paste the content into the software you chose! And the text will be automatically formatted in your software!
 9. Press `Alt + M` to hide the UI, and `Alt + M` again to show the UI!
 10. Press `Ctrl + M` or `Cmd + M` to launch or stop the extension!
+
+### Switching to a new Tab
+- When the user switches to a new tab and want to continue use the application, make sure <b>REFRESH</b> the active tab for successful integration.
+
+### Common Issues
+- If application is not working, try relaunching the chrome extension from Extension settings.
+- Refresh the current page and press <code>Ctrl/Cmd + M</code> to relauch the service.
 
 ## Tech Stack
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
