@@ -9,7 +9,7 @@
         "clipboardRead",
         "clipboardWrite",
         "storage",
-        "activeTab", "tabs"
+        "activeTab", "tabs", "webNavigation"
     ],
     "host_permissions": ["<all_urls>"],
     "icons": {
@@ -32,7 +32,7 @@
             "js": ["copy.js", 
                     "frontend.js"],
             "css": ["style.css"],
-            "run_at": "document_idle"
+            "run_at": "document_start"
         }
     ],
     "action": {
