@@ -1,4 +1,5 @@
 console.log("This is a proof that the content script is running!");
+console.log(window.location.hostname);
 
 if (typeof optionToFunction === "undefined") {
     var optionToFunction = {
@@ -10,7 +11,7 @@ if (typeof optionToFunction === "undefined") {
 
     var isActive = false;
     var listener = null;
-  }
+}
 
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -204,12 +205,23 @@ function extractLatexFromAnnotations(katexOuterHTML) {
     const regex = /<annotation\b[^>]*>(.*?)<\/annotation>/gs;
     const matches = katexOuterHTML.match(regex);
     if (matches) {
+        console.log("matches: ", matches)
         return matches.map(match => match.replace(/<\/?annotation[^>]*>/g, ''))[0];
     }
-    window.alert("This platform currenlty is not supported by Math Paste!");
-    throw new Error("There is no annotation tags in the content.");
+    if (checkPlatform()) {
+        window.alert("Try copying from top right to bottom left. Check tutorial for more details!");
+        return
+    }
+    window.alert("This platform is currenlty not supported by Math Paste!");
 }
 
+
+function checkPlatform() {
+    if (window.location.hostname !== "claude.ai" || window.location.hostname !== "chatgpt.com" || window.location.hostname !== "copilot.microsoft.com") {
+        return false;
+    }
+    return true;
+}
 
 // Extract the latex from textContent, attempting the fallback == plain approach.
 // Temporary not being adopted due to pattern inconsistency.
