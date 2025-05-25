@@ -1,29 +1,31 @@
-// console.log("This is a proof that the content script is running!");
+console.log("This is a proof that the content script is running!");
 
-const optionToFunction = {
-    "math_paste_Obsidian": traverseHTMLWrapped,
-    "math_paste_Notion": traverseHTMLWrapped,
-    "math_paste_LaTex": traverseHTMLLatex,
-    "math_paste_None": null
-}
+if (typeof optionToFunction === "undefined") {
+    var optionToFunction = {
+      "math_paste_Obsidian": traverseHTMLWrapped,
+      "math_paste_Notion": traverseHTMLWrapped,
+      "math_paste_LaTex": traverseHTMLLatex,
+      "math_paste_None": null
+    };
 
-let isActive = false;
-let listener = null;
+    var isActive = false;
+    var listener = null;
+  }
+
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
+    // console.log("Message received.")
+
     if (message.imgId !== undefined) {
-        // console.log("imagId listner gets triggered")
         if (isActive) {
             document.removeEventListener("copy", listener)
-            // console.log("----------- imgID------------", message.imgId)
             listener = (event)=> setUpMathPaste(message.imgId);
             document.addEventListener("copy", listener);
         }
     }
 
-    // console.log("Copy.js is listening");
     if (message.toggle !== undefined) {
-        // console.log("toggle message received")
         isActive = message.toggle;
         listener = () => setUpMathPaste(null);
         if (isActive) {
@@ -95,47 +97,42 @@ async function getClipBoardPlainText() {
     return clipBoardPlainText;
 }
 
-
-// This wrapped version ensures auto-render compatibility with Obsidian and Notion
-function traverseHTMLWrapped (htmlStructure) {
+function traverseHTMLWrapped(htmlStructure) {
     const startTime = Date.now();
+    let result = [];
 
-    let textContent = [];
-
-    function dfs (root) {
+    function dfs(root) {
         if (Date.now() - startTime > 3000) {
-            throw new Error("The nested HTML strucutre is infinite!");
+            throw new Error("The nested HTML structure is infinite!");
         }
-        if (!root) {
-            return;
-        }
+        if (!root) return;
 
         const nodes = root.childNodes;
         if (nodes.length === 0) {
-            textContent = textContent + [root.textContent];
+            result.push(root.textContent);
             return;
         }
 
         const fullTag = extractFullTag(root.outerHTML);
         const kaTexTag = getTagKatexContentFromFullTag(fullTag);
+
         if (kaTexTag === null) {
             for (const node of nodes) {
                 dfs(node);
             }
-        } else {  
-            // Approach: leverage annotation tags (succeed)
+        } else {
             const mathTextContent = root.outerHTML;
             const latexMathContent = extractLatexFromAnnotations(mathTextContent);
             const displayFormat = retrieveFormatFromKatexTag(kaTexTag);
             const formattedLatex = formatLaTex(latexMathContent, displayFormat);
 
-            textContent = textContent + [formattedLatex];
-        }    
-
-        return textContent
+            result.push(formattedLatex);
+        }
     }
-    return dfs(htmlStructure)
 
+    dfs(htmlStructure);
+
+    return result.join(""); 
 }
 
 
@@ -209,7 +206,7 @@ function extractLatexFromAnnotations(katexOuterHTML) {
     if (matches) {
         return matches.map(match => match.replace(/<\/?annotation[^>]*>/g, ''))[0];
     }
-    window.alert("This platform currenlty is not supproted by Math Paste!");
+    window.alert("This platform currenlty is not supported by Math Paste!");
     throw new Error("There is no annotation tags in the content.");
 }
 

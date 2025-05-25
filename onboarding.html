@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="onboarding.css">
-    <link rel="icon" type="image/png" href="icons/mathPaste-no-background.png">
+    <link rel="icon" type="image/png" href="icons/mathPaste-no-background.png" as="style" crossorigin="anonymous">
     <title>Math Paste</title>
 </head>
 
 <body>
     <header class="ob-header">
-        <h1>Math Paste (V1.0.0)</h1>
+        <h1>Math Paste (V1.1.0)</h1>
         <p>Your GO-TO way to translate math from AI Chatbots to online Notebooks!</p>
     </header>
     <section class="demo">
@@ -29,14 +29,14 @@
         <div class="section-div">
             <h2>✨ Introduction & Features</h2>
             <p>
-                Math Paste smoothens the transition of math equations between AI rendered math equations and online note-taking applications,
-                this Chrome extension allows you duplicate complex math equations that AI generates to your note-taking application with ease!
+                Math Paste is a light weight Chrome Extension that smoothens the transition of math equations between AI rendered math equations and online note-taking applications,
+                this application allows you paste complex math equations from AI Chat history to your note-taking application with ease!
             </p>
             <h3>
                 Compatible AI Platforms:
             </h3>
             <ul>
-                <li>All currently existing ChatGPT models (last updated: 05-11-2025)</li>
+                <li>All currently existing ChatGPT models (last updated: 05-25-2025)</li>
                 <li>Claude.AI</li>
                 <li>Copilot</li>
             </ul>
@@ -53,8 +53,10 @@
     <section class="usage">
         <div class="section-div">
             <h2>⚙️ How to Use</h2>
+            <h3>User Guide</h3>
             <ol>
-                <li>Enable the extension from the Chrome toolbar</li>
+                <li>Enable the extension from the Chrome toolbar.</li>
+                <li>Refresh the active tab for complete integration.</li>
                 <li>Toggle Math Paste with <code>Ctrl+M</code> for windows or <code>Cmd + M</code> for Mac</li>
                 <li>Hover over the UI and select your notebook or format.</li>
                 <li>Copy the rendered Math from the AI Chat from top to bottom.</li>
@@ -62,11 +64,16 @@
                 <img id="copy-method" src="videos/gifs/copy_method_top_down.gif" alt="correct copy method">
                 <h5>Correct Copy Method Demo 2</h5>
                 <img id="copy-method" src="videos/gifs/correct_copy_method1.gif" alt="correct copy method">
-                <h5>Incorrect Copy Method Demo 1</h5>
+                <h5>Incorrect Copy Method Demo 1 [Do not copy from left to right]</h5>
                 <img id="copy-method" src="videos/gifs/incorrect_copy_method1.gif" alt="correct copy method">
-                <h5>Incorrect Copy Method Demo 1</h5>
+                <h5>Incorrect Copy Method Demo 1 [Do not copy from the middle of any math equations]</h5>
                 <img id="copy-method" src="videos/gifs/incorrect_copy_method2.gif" alt="correct copy method">
                 <li>Paste in your note book and done!</li>
+            </ol>
+            <h3>Swtiching Tabs</h3>
+            <ol>
+                <li>After switching to a new tab, make sure to refresh the active tab for full integration.</li>
+                <li>Then launch Math Paste with <code>Ctrl+M</code> for windows or <code>Cmd + M</code> for Mac</li>
             </ol>
         </div>
         
@@ -77,9 +84,8 @@
             <h2>🔧 Troubleshooting</h2>
             <p>If the extension isn’t working:</p>
             <ul>
-                <li>Refresh the tab after installing the extension.</li>
-                <li>Check console logs for errors.</li>
-                <li>Read the compatible platforms above.</li>
+                <li>Refresh the current tab and relauch by pressing <code>Ctrl+M</code> for windows or <code>Cmd + M</code> for Mac.
+                <li>Check with the compatible platforms listed above.</li>
             </ul>
         </div>
     </section>
