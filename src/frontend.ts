@@ -1,7 +1,7 @@
 // ------------ global declarations --------------
-const OPTIONS = {"math_paste_Obsidian": "icons/obsidian.png", 
-    "math_paste_Notion": "icons/notion.png", 
-    "math_paste_LaTex": "icons/latex.svg", 
+const OPTIONS = {"math_paste_Obsidian": "icons/obsidian.png",
+    "math_paste_Notion": "icons/notion.png",
+    "math_paste_LaTex": "icons/latex.svg",
     "math_paste_None": "icons/none.png"}
 
 let showUI = false;
@@ -84,7 +84,7 @@ function createToggleContainer (toggle, options) {
 
 function addHoverListenerToToggleContainer() {
     const toggle = document.getElementById("toggle-options-container");
-    const options = document.querySelectorAll(".option-math-paste");
+    const options = document.querySelectorAll<HTMLElement>(".option-math-paste");
     if (!toggle) {
         throw new Error("Toggle has not been created yet!");
     }
@@ -181,7 +181,7 @@ function styleToggleOnOptions(toggle) {
         // console.log(imgId);
         imgInsertion.src = chrome.runtime.getURL(OPTIONS[imgId]);
         toggle.appendChild(imgInsertion);
-    } 
+    }
 }
 
 function helperImageNameExtraction(classname) {
@@ -230,7 +230,7 @@ function addOnClickListenerForOption(option, toggle) {
         })
     } else {
         console.log("Toggle is not found!");
-    }   
+    }
 }
 
 
@@ -241,7 +241,7 @@ function sendMessageForFunctionChange(imgId) {
 function positionOptions(options) {
     let position = 150;
     for (const option of options) {
-        option.style.top = position.toString() + "px"; 
+        option.style.top = position.toString() + "px";
         position += 50;
     }
 }

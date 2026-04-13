@@ -44,7 +44,7 @@ async function setUpMathPaste(imgId) {
         if (func) {
             const newClipboardContent = func(htmls);
             await modifyClipboard(newClipboardContent);
-        }        
+        }
 }
 
 
@@ -128,7 +128,7 @@ function traverseHTMLWrapped(htmlStructure) {
 
     dfs(htmlStructure);
 
-    return result.join(""); 
+    return result.join("");
 }
 
 
@@ -136,11 +136,11 @@ function traverseHTMLWrapped(htmlStructure) {
 function traverseHTMLLatex (htmlStructure) {
     const startTime = Date.now();
 
-    let textContent = [];
+    let textContent: string = '';
 
-    function dfs (root) {
+    function dfs (root: any): string | undefined {
         if (Date.now() - startTime > 3000) {
-            throw new Error("The nested HTML strucutre is infinite!");
+            throw new Error("The nested HTML structure is infinite!");
         }
         if (!root) {
             return;
@@ -148,7 +148,7 @@ function traverseHTMLLatex (htmlStructure) {
 
         const nodes = root.childNodes;
         if (nodes.length === 0) {
-            textContent = textContent + [root.textContent];
+            textContent += root.textContent ?? '';
             return;
         }
 
@@ -158,13 +158,13 @@ function traverseHTMLLatex (htmlStructure) {
             for (const node of nodes) {
                 dfs(node);
             }
-        } else {  
+        } else {
             // Approach: leverage annotation tags (succeed)
             const mathTextContent = root.outerHTML;
             const latexMathContent = extractLatexFromAnnotations(mathTextContent);
 
-            textContent = textContent + [latexMathContent];
-        }    
+            textContent += latexMathContent ?? '';
+        }
 
         return textContent
     }
@@ -194,7 +194,7 @@ function extractFullTag(outerHTML) {
 }
 
 // Working function that extracts the latex from annotation tags
-// Premise: the rendered math equation must meet global accessibility condition and includes a 
+// Premise: the rendered math equation must meet global accessibility condition and includes a
 // pair of <annotaiton> tags.
 function extractLatexFromAnnotations(katexOuterHTML) {
     const regex = /<annotation\b[^>]*>(.*?)<\/annotation>/gs;
@@ -211,7 +211,8 @@ function extractLatexFromAnnotations(katexOuterHTML) {
 
 
 function checkPlatform() {
-    if (window.location.hostname !== "claude.ai" || window.location.hostname !== "chatgpt.com" || window.location.hostname !== "copilot.microsoft.com") {
+    const supported = ["claude.ai", "chatgpt.com", "copilot.microsoft.com"];
+    if (!supported.includes(window.location.hostname)) {
         return false;
     }
     return true;
@@ -220,10 +221,10 @@ function checkPlatform() {
 // Extract the latex from textContent, attempting the fallback == plain approach.
 // Temporary not being adopted due to pattern inconsistency.
 function extractKatexLatex(mathTextContent) {
-    // The core of this function is to realize that the textContent property, when applied onto 
-    // rendered math equations, its fallback and plain text is exactly the same, one at the end and one 
-    // at the start. So what we need to do is to figure out when the fallback starts and when the plain 
-    // text ends. 
+    // The core of this function is to realize that the textContent property, when applied onto
+    // rendered math equations, its fallback and plain text is exactly the same, one at the end and one
+    // at the start. So what we need to do is to figure out when the fallback starts and when the plain
+    // text ends.
     // This limits the scope to only GPT like copy use cases.
     let l = 1;
     const len = mathTextContent.length;
@@ -250,7 +251,7 @@ function formatLaTex(laTex, format) {
     } else if  (format === "block") {
         return "$$" + laTex + "$$";
     } else {
-        throw new Error("Format is not recognized!"); 
+        throw new Error("Format is not recognized!");
     }
 }
 
