@@ -5,6 +5,8 @@ const win = window as any;
 
 if (typeof win.__mathpasteInit === "undefined") {
     win.__mathpasteInit = true;
+    // Function references are forward-declared — safe because vite-plugin-web-extension
+    // compiles content scripts as IIFE, where function declarations are hoisted.
     win.__mathpasteOptionToFunction = {
       "math_paste_Obsidian": traverseHTMLWrapped,
       "math_paste_Notion": traverseHTMLWrapped,
