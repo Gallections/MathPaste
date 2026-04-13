@@ -53,6 +53,7 @@ function isInjectableUrl(url) {
 function injectContentScript(tabId) {
     chrome.scripting.executeScript({
         target: { tabId },
+        // TODO Task 9: verify 'copy.js' matches the filename vite-plugin-web-extension outputs to dist/
         files: ['copy.js']
     }).then(() => {
         console.log('Injected content script into tab', tabId);

@@ -166,10 +166,9 @@ function traverseHTMLLatex (htmlStructure) {
             textContent += latexMathContent ?? '';
         }
 
-        return textContent
     }
-    return dfs(htmlStructure)
-
+    dfs(htmlStructure)
+    return textContent
 }
 
 // This matches the Katex Instance:
