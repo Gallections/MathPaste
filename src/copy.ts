@@ -1,33 +1,37 @@
 // console.log("content script is injected!")
-if (typeof optionToFunction === "undefined") {
-    var optionToFunction = {
+// Use window to persist state across repeated content-script injections.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const win = window as any;
+
+if (typeof win.__mathpasteInit === "undefined") {
+    win.__mathpasteInit = true;
+    win.__mathpasteOptionToFunction = {
       "math_paste_Obsidian": traverseHTMLWrapped,
       "math_paste_Notion": traverseHTMLWrapped,
       "math_paste_LaTex": traverseHTMLLatex,
       "math_paste_None": null
     };
-
-    var isActive = false;
-    var listener = null;
+    win.__mathpasteIsActive = false;
+    win.__mathpasteListener = null;
 }
 
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
     if (message.imgId !== undefined) {
-        if (isActive) {
-            document.removeEventListener("copy", listener)
-            listener = (event)=> setUpMathPaste(message.imgId);
-            document.addEventListener("copy", listener);
+        if (win.__mathpasteIsActive) {
+            document.removeEventListener("copy", win.__mathpasteListener);
+            win.__mathpasteListener = () => setUpMathPaste(message.imgId);
+            document.addEventListener("copy", win.__mathpasteListener);
         }
     }
 
     if (message.toggle !== undefined) {
-        isActive = message.toggle;
-        listener = () => setUpMathPaste(null);
-        if (isActive) {
-            document.addEventListener("copy", listener);
+        win.__mathpasteIsActive = message.toggle;
+        win.__mathpasteListener = () => setUpMathPaste(null);
+        if (win.__mathpasteIsActive) {
+            document.addEventListener("copy", win.__mathpasteListener);
         } else {
-            document.removeEventListener("copy", listener);
+            document.removeEventListener("copy", win.__mathpasteListener);
         }
     }
 
@@ -38,9 +42,9 @@ async function setUpMathPaste(imgId) {
         // console.log("-------- the HTMLS Structural version -------");
         // console.log(htmls);
 
-        const plain = await getClipBoardPlainText();
+        // const plain = await getClipBoardPlainText(); // reserved for future use
 
-        const func = optionToFunction[imgId];
+        const func = win.__mathpasteOptionToFunction[imgId];
         if (func) {
             const newClipboardContent = func(htmls);
             await modifyClipboard(newClipboardContent);
@@ -52,8 +56,8 @@ async function setUpMathPaste(imgId) {
 // This function extracts the nested HTML strucutre from the clipBoard
 async function getClipBoardHTML() {
 
-    let clipBoardItems = await navigator.clipboard.read();
-    let htmlTexts = [];
+    const clipBoardItems = await navigator.clipboard.read();
+    const htmlTexts = [];
     for (const item of clipBoardItems) {
 
         if (item.types.includes("text/html")) {
@@ -72,8 +76,8 @@ async function getClipBoardHTML() {
 
 // This function extracts the HTML structure in string from the clipboard
 async function getClipBoardHTMLString() {
-    let clipBoardItems = await navigator.clipboard.read();
-    let htmlTexts = [];
+    const clipBoardItems = await navigator.clipboard.read();
+    const htmlTexts = [];
     for (const item of clipBoardItems) {
 
         if (item.types.includes("text/html")) {
@@ -88,14 +92,14 @@ async function getClipBoardHTMLString() {
 
 // THis aims to extract the plain text from the clipboard, used as a helper function
 async function getClipBoardPlainText() {
-    let clipBoardPlainText = await navigator.clipboard.readText();
+    const clipBoardPlainText = await navigator.clipboard.readText();
     // console.log("The copied text in plain is ", clipBoardPlainText)
     return clipBoardPlainText;
 }
 
 function traverseHTMLWrapped(htmlStructure) {
     const startTime = Date.now();
-    let result = [];
+    const result = [];
 
     function dfs(root) {
         if (Date.now() - startTime > 3000) {
@@ -277,7 +281,7 @@ async function modifyClipboard(modifedText) {
 // This is a helper function that is used as a math separater
 function generateUniqueString() {
     return 'xxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
 }
