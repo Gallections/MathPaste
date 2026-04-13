@@ -47,7 +47,7 @@ chrome.webNavigation.onCompleted.addListener(details => {
 function isInjectableUrl(url) {
     if (!url) return false;
     return url.startsWith('http://') || url.startsWith('https://');
-} 
+}
 
 
 function injectContentScript(tabId) {
@@ -61,7 +61,7 @@ function injectContentScript(tabId) {
         console.error('Failed to inject content script:', err);
     });
 }
-  
+
 
 chrome.commands.onCommand.addListener((command)=> {
     if (command === "toggle-math-paste") {
