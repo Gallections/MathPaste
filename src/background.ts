@@ -53,8 +53,7 @@ function isInjectableUrl(url) {
 function injectContentScript(tabId) {
     chrome.scripting.executeScript({
         target: { tabId },
-        // TODO Task 9: verify 'copy.js' matches the filename vite-plugin-web-extension outputs to dist/
-        files: ['copy.js']
+        files: ['src/copy.js']
     }).then(() => {
         console.log('Injected content script into tab', tabId);
         // chrome.tabs.sendMessage(tabId, { type: 'setup' });
@@ -77,7 +76,7 @@ chrome.commands.onCommand.addListener((command)=> {
     }
 })
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
     if (message.action === "functionChange") {
         chrome.tabs.query({active:true, currentWindow:true}, (tabs)=>{
             if (tabs[0]) {
