@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Math Paste",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "An light weight application that aims to ease the transfer of rendered math equations from GPT to Notion",
     "permissions": [
         "activeTab",
@@ -9,38 +9,38 @@
         "clipboardRead",
         "clipboardWrite",
         "storage",
-        "activeTab", "tabs", "webNavigation"
+        "tabs",
+        "webNavigation"
     ],
     "host_permissions": ["<all_urls>"],
     "icons": {
-        "16":"icons/favicons/mathPaste-16x16.png",
-        "48":"icons/favicons/mathPaste-48x48.png",
-        "128":"icons/favicons/mathPaste-128x128.png"
-      },
+        "16": "icons/favicons/mathPaste-16x16.png",
+        "48": "icons/favicons/mathPaste-48x48.png",
+        "128": "icons/favicons/mathPaste-128x128.png"
+    },
     "web_accessible_resources": [
         {
-            "resources": ["icons/*", "onboarding.html"],
+            "resources": ["icons/*", "src/onboarding.html"],
             "matches": ["<all_urls>"]
         }
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "src/background.ts"
     },
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
-            "js": ["copy.js", 
-                    "frontend.js"],
-            "css": ["style.css"],
+            "js": ["src/copy.ts", "src/frontend.ts"],
+            "css": ["src/style.css"],
             "run_at": "document_start"
         }
     ],
     "action": {
         "default_title": "Math Paste",
         "default_icon": {
-            "16":"icons/favicons/mathPaste-16x16.png",
-            "48":"icons/favicons/mathPaste-48x48.png",
-            "128":"icons/favicons/mathPaste-128x128.png"
+            "16": "icons/favicons/mathPaste-16x16.png",
+            "48": "icons/favicons/mathPaste-48x48.png",
+            "128": "icons/favicons/mathPaste-128x128.png"
         }
     },
     "commands": {
@@ -52,4 +52,4 @@
             "description": "Toggle math-paste on/off"
         }
     }
-  }
+}
