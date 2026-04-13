@@ -20,7 +20,7 @@
     },
     "web_accessible_resources": [
         {
-            "resources": ["icons/*", "src/onboarding.html"],
+            "resources": ["icons/*", "onboarding.html"],
             "matches": ["<all_urls>"]
         }
     ],
@@ -46,8 +46,8 @@
     "commands": {
         "toggle-math-paste": {
             "suggested_key": {
-                "default": "Ctrl+M",
-                "mac": "Command+M"
+                "default": "Alt+Shift+M",
+                "mac": "Alt+Shift+M"
             },
             "description": "Toggle math-paste on/off"
         }

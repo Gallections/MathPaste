@@ -8,6 +8,21 @@ let showUI = false;
 let isActiveContent = false;
 let observer = null;
 
+// -------------- auto-start ------------------------
+function autoStart() {
+    isActiveContent = true;
+    observer = new MutationObserver(() => { inject(); });
+    observer.observe(document.body, { childList: true, subtree: true });
+    inject();
+    toggleUI();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoStart);
+} else {
+    autoStart();
+}
+
 // -------------- communication ------------------------
 chrome.runtime.onMessage.addListener((message) => {
     if (message.toggle !== undefined) {

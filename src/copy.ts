@@ -13,8 +13,9 @@ if (typeof win.__mathpasteInit === "undefined") {
       "math_paste_LaTex": traverseHTMLLatex,
       "math_paste_None": null
     };
-    win.__mathpasteIsActive = false;
-    win.__mathpasteListener = null;
+    win.__mathpasteIsActive = true;
+    win.__mathpasteListener = () => setUpMathPaste(null);
+    document.addEventListener("copy", win.__mathpasteListener);
 }
 
 

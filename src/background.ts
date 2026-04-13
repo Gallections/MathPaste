@@ -1,7 +1,7 @@
-let extensionEnabled = false;
+let extensionEnabled = true;
 
 chrome.runtime.onInstalled.addListener(() => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("src/onboarding.html") });
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
 });
 
 

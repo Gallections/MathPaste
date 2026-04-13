@@ -13,8 +13,8 @@ export default defineConfig({
       targets: [
         { src: 'icons', dest: '.' },
         { src: 'videos', dest: '.' },
-        { src: 'src/onboarding.html', dest: 'src' },
-        { src: 'src/onboarding.css', dest: 'src' },
+        { src: 'src/onboarding.html', dest: '.' },
+        { src: 'src/onboarding.css', dest: '.' },
       ],
     }),
   ],
