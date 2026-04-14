@@ -42,11 +42,18 @@
             </ul>
 
             <h3>
-                Compatible Note-taking Applications
+                Supported Output Formats
             </h3>
-            <li>Notion</li>
-            <li>Obsidian</li>
-            <li>LaTex</li>
+            <ul>
+                <li><strong>Notion</strong> — inline <code>$...$</code>, block <code>$$...$$</code></li>
+                <li><strong>Obsidian</strong> — inline <code>$...$</code>, block <code>$$...$$</code></li>
+                <li><strong>LaTeX</strong> — raw LaTeX (no delimiters)</li>
+                <li><strong>MathJax</strong> — inline <code>\(...\)</code>, block <code>\[...\]</code> (Hugo, Jekyll, Org-mode, academic sites)</li>
+                <li><strong>Typst</strong> — inline <code>$...$</code>, block <code>$ ... $</code> with spaces</li>
+                <li><strong>MediaWiki</strong> — <code>&lt;math&gt;...&lt;/math&gt;</code> tags (Wikipedia and MediaWiki editors)</li>
+                <li><strong>AsciiMath</strong> — best-effort conversion of common expressions (fractions, roots, Greek letters, operators)</li>
+                <li><strong>None</strong> — copy text as-is, no math conversion</li>
+            </ul>
         </div>
     </section>
 
