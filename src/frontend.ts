@@ -1,8 +1,14 @@
 // ------------ global declarations --------------
-const OPTIONS = {"math_paste_Obsidian": "icons/obsidian.png",
-    "math_paste_Notion": "icons/notion.png",
-    "math_paste_LaTex": "icons/latex.svg",
-    "math_paste_None": "icons/none.png"}
+const OPTIONS = {
+    "math_paste_Obsidian":  "icons/obsidian.png",
+    "math_paste_Notion":    "icons/notion.png",
+    "math_paste_LaTex":     "icons/latex.svg",
+    "math_paste_MathJax":   "icons/mathjax.svg",
+    "math_paste_Typst":     "icons/typst.svg",
+    "math_paste_MediaWiki": "icons/mediawiki.svg",
+    "math_paste_AsciiMath": "icons/asciimath.svg",
+    "math_paste_None":      "icons/none.png",
+}
 
 let showUI = false;
 let isActiveContent = false;
