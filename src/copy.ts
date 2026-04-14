@@ -220,64 +220,133 @@ function latexToAsciiMath(latex: string): string {
 // ─── Core pipeline ──────────────────────────────────────────────────────────
 
 async function setUpMathPaste(imgId: string | null) {
-    const htmlBody = await getClipboardHTML();
-    if (!htmlBody) return;
-
     const formatFn = win.__mathpasteOptionToFunction[imgId];
     if (!formatFn) return;
 
-    const { html, text } = processHTML(htmlBody, formatFn);
-    await writeClipboard(html, text);
+    const items = await navigator.clipboard.read();
+
+    // ── Strategy 1: HTML clipboard with rendered math (KaTeX, MathJax, MathML) ──
+    for (const item of items) {
+        if (!item.types.includes("text/html")) continue;
+        const blob = await item.getType("text/html");
+        const htmlText = await blob.text();
+        const doc = new DOMParser().parseFromString(htmlText, "text/html");
+        const { html, text, replaced } = processHTML(doc.body, formatFn);
+        if (replaced > 0) {
+            await writeClipboard(html, text);
+            return;
+        }
+        break; // HTML present but no math — fall through to plain-text strategy
+    }
+
+    // ── Strategy 2: Plain text containing LaTeX delimiters ──
+    // Covers: platform copy buttons, Copilot (no rendering), markdown sources
+    for (const item of items) {
+        if (!item.types.includes("text/plain")) continue;
+        const blob = await item.getType("text/plain");
+        const plain = await blob.text();
+        if (hasLatexDelimiters(plain)) {
+            const converted = processPlainText(plain, formatFn);
+            await navigator.clipboard.writeText(converted);
+        }
+        return;
+    }
 }
 
 /**
- * Clones the HTML body from the clipboard, replaces every KaTeX element
- * in-place with formatted LaTeX text, and returns the modified HTML and
- * its plain-text equivalent. All surrounding formatting (bold, italic,
- * lists, code, links) is preserved because the HTML structure is kept intact.
+ * Clones the HTML body, finds every rendered math element via its
+ * `<annotation encoding="application/x-tex">` tag (present in KaTeX,
+ * MathJax v3, and native MathML), replaces the outermost math container
+ * in-place with formatted LaTeX text, and returns the result together with
+ * a count of replacements made. All surrounding formatting is preserved.
  */
 function processHTML(
     htmlBody: HTMLElement,
     formatFn: (latex: string, isBlock: boolean) => string
-): { html: string; text: string } {
+): { html: string; text: string; replaced: number } {
     const clone = htmlBody.cloneNode(true) as HTMLElement;
+    const seen = new WeakSet<Element>();
+    let replaced = 0;
 
-    for (const katexEl of Array.from(clone.querySelectorAll('.katex'))) {
-        // Skip elements nested inside another .katex (only process the outermost)
-        if (katexEl.parentElement?.closest('.katex')) continue;
+    for (const annotation of Array.from(
+        clone.querySelectorAll('annotation[encoding="application/x-tex"]')
+    )) {
+        const latex = (annotation.textContent ?? '').trim();
+        if (!latex) continue;
 
-        // KaTeX always writes the raw LaTeX into an <annotation> tag for accessibility
-        const annotation = katexEl.querySelector('annotation');
-        if (!annotation) continue;
-        const latex = annotation.textContent ?? '';
+        const { container, isBlock } = findMathContainer(annotation as Element);
+        if (!container || seen.has(container)) continue;
+        seen.add(container);
 
-        // .katex-display wraps block math; its child is the .katex span
-        const isBlock = katexEl.parentElement?.classList.contains('katex-display') ?? false;
-        const elementToReplace = isBlock ? katexEl.parentElement! : katexEl;
-
-        const textNode = document.createTextNode(formatFn(latex, isBlock));
-        elementToReplace.parentNode?.replaceChild(textNode, elementToReplace);
+        container.parentNode?.replaceChild(
+            document.createTextNode(formatFn(latex, isBlock)),
+            container
+        );
+        replaced++;
     }
 
-    return {
-        html: clone.innerHTML,
-        text: clone.textContent ?? '',
-    };
+    return { html: clone.innerHTML, text: clone.textContent ?? '', replaced };
+}
+
+/**
+ * Walks up the DOM from a LaTeX annotation to find the outermost math
+ * container to replace. Handles:
+ *   - KaTeX inline  → .katex
+ *   - KaTeX block   → .katex-display
+ *   - MathJax v3    → mjx-container
+ *   - Native MathML → <math>
+ */
+function findMathContainer(start: Element): { container: Element | null; isBlock: boolean } {
+    let el: Element | null = start.parentElement;
+    let container: Element | null = null;
+    let isBlock = false;
+
+    while (el && el.tagName.toLowerCase() !== 'body') {
+        const tag = el.tagName.toLowerCase();
+
+        if (el.classList?.contains('katex-display')) {
+            return { container: el, isBlock: true };          // KaTeX block — outermost
+        }
+        if (el.classList?.contains('katex')) {
+            container = el; isBlock = false;                  // KaTeX inline — keep walking
+        }
+        if (tag === 'mjx-container') {
+            return { container: el, isBlock: el.hasAttribute('display') }; // MathJax
+        }
+        if (tag === 'math' && !container) {
+            container = el;                                   // bare MathML
+            isBlock = el.getAttribute('display') === 'block';
+        }
+
+        el = el.parentElement;
+    }
+
+    return { container, isBlock };
+}
+
+/** True if text contains any recognised LaTeX math delimiters. */
+function hasLatexDelimiters(text: string): boolean {
+    return /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\[[\s\S]+?\\\]|\\\(.+?\\\)/.test(text);
+}
+
+/**
+ * Converts LaTeX delimiters in plain text to the target format.
+ * Handles $$...$$ / \[...\] (block) and $...$ / \(...\) (inline).
+ * Block patterns are matched first so $$ is not consumed by the $ rule.
+ */
+function processPlainText(
+    text: string,
+    formatFn: (latex: string, isBlock: boolean) => string
+): string {
+    let result = text;
+    result = result.replace(/\$\$([\s\S]+?)\$\$/g,     (_, l) => formatFn(l.trim(), true));
+    result = result.replace(/\\\[([\s\S]+?)\\\]/g,      (_, l) => formatFn(l.trim(), true));
+    result = result.replace(/(?<!\$)\$([^$\n]+?)\$(?!\$)/g, (_, l) => formatFn(l.trim(), false));
+    result = result.replace(/\\\((.+?)\\\)/g,           (_, l) => formatFn(l.trim(), false));
+    return result;
 }
 
 // ─── Clipboard helpers ───────────────────────────────────────────────────────
-
-async function getClipboardHTML(): Promise<HTMLElement | undefined> {
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-        if (item.types.includes("text/html")) {
-            const blob = await item.getType("text/html");
-            const text = await blob.text();
-            const doc = new DOMParser().parseFromString(text, "text/html");
-            return doc.body;
-        }
-    }
-}
 
 async function writeClipboard(htmlContent: string, plainText: string) {
     try {
