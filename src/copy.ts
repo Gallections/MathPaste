@@ -1,3 +1,5 @@
+import { processFromLiveDOM } from './domUtils';
+
 // Use window to persist state across repeated content-script injections.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const win = window as any;
@@ -223,6 +225,12 @@ async function setUpMathPaste(imgId: string | null) {
     const formatFn = win.__mathpasteOptionToFunction[imgId];
     if (!formatFn) return;
 
+    // Snapshot selection before any await — the selection is cleared/changed after async gaps
+    const sel = window.getSelection();
+    const selRanges = sel
+        ? Array.from({ length: sel.rangeCount }, (_, i) => sel.getRangeAt(i).cloneRange())
+        : [];
+
     const items = await navigator.clipboard.read();
 
     // ── Strategy 1: HTML clipboard with rendered math (KaTeX, MathJax, MathML) ──
@@ -236,7 +244,17 @@ async function setUpMathPaste(imgId: string | null) {
             await writeClipboard(html, text);
             return;
         }
-        break; // HTML present but no math — fall through to plain-text strategy
+
+        // ── Strategy 1.5: HTML present but no annotations — fall back to live DOM ──
+        if (selRanges.length > 0) {
+            const liveResult = processFromLiveDOM(selRanges, formatFn);
+            if (liveResult !== null) {
+                await navigator.clipboard.writeText(liveResult);
+                return;
+            }
+        }
+
+        break; // HTML present but no math found — skip plain-text strategy
     }
 
     // ── Strategy 2: Plain text containing LaTeX delimiters ──
