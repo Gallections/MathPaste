@@ -41,13 +41,13 @@ const SHADOW_CSS = `
     gap: 7px;
     padding: 7px 13px;
     border-radius: 999px;
-    background: rgba(9,9,18,0.9);
-    border: 1px solid rgba(255,255,255,0.11);
-    box-shadow: 0 2px 16px rgba(0,0,0,0.45);
+    background: rgba(255,252,245,0.95);
+    border: 1px solid rgba(210,200,185,0.60);
+    box-shadow: 0 2px 16px rgba(140,110,60,0.12);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     cursor: grab;
-    color: rgba(255,255,255,0.82);
+    color: #504030;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -56,8 +56,8 @@ const SHADOW_CSS = `
 }
 
 #toggle-math-paste:hover {
-    border-color: rgba(255,255,255,0.2);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.55);
+    border-color: rgba(180,165,145,0.80);
+    box-shadow: 0 4px 24px rgba(140,110,60,0.18);
 }
 
 #mp-logo {
@@ -84,10 +84,10 @@ const SHADOW_CSS = `
     right: calc(100% + 10px);
     left: auto;
     width: 230px;
-    background: rgba(9,9,18,0.96);
-    border: 1px solid rgba(255,255,255,0.09);
+    background: rgba(255,252,246,0.97);
+    border: 1px solid rgba(210,200,185,0.50);
     border-radius: 14px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow: 0 8px 40px rgba(140,110,60,0.12), inset 0 0 0 1px rgba(255,248,235,0.60);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     overflow: hidden;
@@ -118,7 +118,7 @@ const SHADOW_CSS = `
     align-items: center;
     justify-content: space-between;
     padding: 11px 14px 9px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(210,200,185,0.30);
     cursor: grab;
 }
 
@@ -128,14 +128,14 @@ const SHADOW_CSS = `
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.22em;
-    color: rgba(255,255,255,0.28);
+    color: #b0a090;
     font-family: inherit;
 }
 
 #mp-close {
     all: unset;
     font-size: 11px;
-    color: rgba(255,255,255,0.22);
+    color: #b0a090;
     cursor: pointer;
     line-height: 1;
     padding: 2px 3px;
@@ -144,8 +144,8 @@ const SHADOW_CSS = `
 }
 
 #mp-close:hover {
-    color: rgba(255,255,255,0.72);
-    background: rgba(255,255,255,0.07);
+    color: #504030;
+    background: rgba(80,64,48,0.08);
 }
 
 #mp-options {
@@ -164,11 +164,11 @@ const SHADOW_CSS = `
 }
 
 .option-math-paste:hover {
-    background: rgba(255,255,255,0.05);
+    background: rgba(80,64,48,0.06);
 }
 
 .option-math-paste.mp-active {
-    background: rgba(255,255,255,0.038);
+    background: rgba(80,64,48,0.05);
     border-left-color: var(--accent);
 }
 
@@ -180,12 +180,12 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 12px;
     font-family: inherit;
-    color: rgba(255,255,255,0.75);
+    color: rgba(80,64,48,0.85);
     transition: color 0.1s;
 }
 
 .option-math-paste.mp-active .mp-name {
-    color: rgba(255,255,255,0.95);
+    color: #504030;
 }
 
 .mp-hint {
@@ -193,7 +193,7 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 10px;
     font-family: inherit;
-    color: rgba(255,255,255,0.2);
+    color: #b0a090;
     letter-spacing: 0.02em;
 }
 `;
