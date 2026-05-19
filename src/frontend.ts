@@ -60,6 +60,13 @@ const SHADOW_CSS = `
     box-shadow: 0 4px 24px rgba(0,0,0,0.55);
 }
 
+#mp-logo {
+    height: 13px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
+}
+
 .mp-dot {
     display: inline-block;
     width: 7px;
@@ -264,6 +271,11 @@ function buildToggle(): HTMLElement {
     const pill = document.createElement("div");
     pill.id = "toggle-math-paste";
 
+    const logo = document.createElement("img");
+    logo.id = "mp-logo";
+    logo.src = chrome.runtime.getURL("icons/mathPaste-no-background.png");
+    logo.alt = "";
+
     const dot = document.createElement("span");
     dot.id = "mp-dot";
     dot.className = "mp-dot";
@@ -272,6 +284,7 @@ function buildToggle(): HTMLElement {
     label.id = "mp-label";
     label.textContent = "–";
 
+    pill.appendChild(logo);
     pill.appendChild(dot);
     pill.appendChild(label);
     return pill;
