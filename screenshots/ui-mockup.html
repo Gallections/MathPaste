@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MathPaste UI Preview</title>
+<style>
+  body {
+    margin: 0;
+    background: #f0ede8;
+    font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 40px;
+  }
+
+  /* ── Pill ── */
+  .mp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: rgba(255,252,245,0.97);
+    border: 1px solid rgba(210,200,185,0.60);
+    box-shadow: 0 2px 16px rgba(140,110,60,0.14);
+    color: #504030;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .mp-logo {
+    height: 13px;
+    width: auto;
+    display: block;
+  }
+
+  .mp-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Panel ── */
+  .mp-panel {
+    width: 230px;
+    background: rgba(255,252,246,0.99);
+    border: 1px solid rgba(210,200,185,0.50);
+    border-radius: 14px;
+    box-shadow: 0 8px 40px rgba(140,110,60,0.14), inset 0 0 0 1px rgba(255,248,235,0.60);
+    overflow: hidden;
+  }
+
+  .mp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px 9px;
+    border-bottom: 1px solid rgba(210,200,185,0.30);
+  }
+
+  .mp-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    color: #b0a090;
+  }
+
+  .mp-close {
+    font-size: 11px;
+    color: #b0a090;
+    cursor: pointer;
+  }
+
+  .mp-options { padding: 6px 0 8px; }
+
+  .mp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 14px;
+    border-left: 2px solid transparent;
+  }
+
+  .mp-row.active {
+    background: rgba(80,64,48,0.05);
+    border-left-color: #7C3AED;
+  }
+
+  .mp-row-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .mp-name {
+    flex: 1;
+    font-size: 12px;
+    color: rgba(80,64,48,0.85);
+    font-family: inherit;
+  }
+
+  .mp-row.active .mp-name { color: #504030; }
+
+  .mp-hint {
+    font-size: 10px;
+    color: #b0a090;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<!-- Pill only (collapsed state) -->
+<div id="pill-view">
+  <div class="mp-pill">
+    <img class="mp-logo" src="/icons/mathPaste-no-background.png" alt="">
+    <span class="mp-dot" style="background:#7C3AED; box-shadow:0 0 6px #7C3AED88;"></span>
+    <span>OBS</span>
+  </div>
+</div>
+
+<!-- Panel open state -->
+<div id="panel-view">
+  <div class="mp-panel">
+    <div class="mp-header">
+      <span class="mp-title">MATHPASTE</span>
+      <span class="mp-close">✕</span>
+    </div>
+    <div class="mp-options">
+      <div class="mp-row active">
+        <span class="mp-row-dot" style="background:#7C3AED; box-shadow:0 0 5px #7C3AED88;"></span>
+        <span class="mp-name">Obsidian</span>
+        <span class="mp-hint">$…$</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#94A3B8;"></span>
+        <span class="mp-name">Notion</span>
+        <span class="mp-hint">$…$</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#EF4444;"></span>
+        <span class="mp-name">LaTeX</span>
+        <span class="mp-hint">raw</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#22C55E;"></span>
+        <span class="mp-name">MathJax</span>
+        <span class="mp-hint">\(…\)</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#06B6D4;"></span>
+        <span class="mp-name">Typst</span>
+        <span class="mp-hint">$ … $</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#3B82F6;"></span>
+        <span class="mp-name">MediaWiki</span>
+        <span class="mp-hint">&lt;math&gt;</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#F59E0B;"></span>
+        <span class="mp-name">AsciiMath</span>
+        <span class="mp-hint">ascii</span>
+      </div>
+      <div class="mp-row">
+        <span class="mp-row-dot" style="background:#6B7280;"></span>
+        <span class="mp-name">None</span>
+        <span class="mp-hint">–</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
