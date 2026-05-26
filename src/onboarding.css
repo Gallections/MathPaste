@@ -1,15 +1,13 @@
-/* Reset some default browser styles */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Base styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f9f9f9;
-    color: #333;
+    background: #f0ece4;
+    color: #3a2e22;
     line-height: 1.6;
     padding: 20px;
     max-width: 900px;
@@ -17,7 +15,7 @@ body {
 }
 
 a {
-    color: #3178C6;
+    color: #7C3AED;
     text-decoration: none;
 }
 
@@ -28,29 +26,39 @@ a:hover {
 /* Header */
 .ob-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+    padding-top: 1.5rem;
+}
+
+.ob-logo {
+    height: 48px;
+    width: auto;
+    margin-bottom: 0.75rem;
 }
 
 .ob-header h1 {
     font-size: 2.5rem;
-    color: #222;
+    color: #2e2016;
+    font-weight: 700;
 }
 
 .ob-header p {
     font-size: 1.1rem;
-    color: #555;
+    color: #7a6555;
+    margin-top: 0.4rem;
 }
 
 /* Sections */
 section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
 }
 
 .section-div {
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    background: rgba(255, 252, 245, 0.97);
+    border: 1px solid rgba(210, 200, 185, 0.5);
+    padding: 24px;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(140, 110, 60, 0.08);
 }
 
 .demo-inner {
@@ -58,50 +66,105 @@ section {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    margin-top: 0.5rem;
 }
 
 h2 {
-    color: #222;
+    color: #2e2016;
     margin-bottom: 1rem;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
 }
 
 h3 {
-    margin-top: 1rem;
-    color: #444;
-    font-size: 1.2rem;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #504030;
+    font-size: 1.1rem;
 }
 
 h5 {
-    color:#444;
+    color: #7a6555;
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
+    font-weight: 600;
 }
 
 ul, ol {
     padding-left: 1.5rem;
     margin-top: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 li {
     margin-bottom: 0.5rem;
 }
 
-/* Code and keyboard shortcuts */
+p {
+    color: #504030;
+}
+
+/* Code */
 code {
-    background-color: #eaeaea;
+    background: rgba(80, 64, 48, 0.08);
     border-radius: 4px;
     padding: 2px 6px;
+    font-size: 0.9rem;
+    font-family: 'Courier New', Consolas, monospace;
+    color: #3a2e22;
+}
+
+/* Format table */
+.format-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.75rem;
     font-size: 0.95rem;
-    font-family: monospace;
-    color: #000;
+}
+
+.format-table th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 2px solid rgba(210, 200, 185, 0.6);
+    color: #b0a090;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.format-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(210, 200, 185, 0.3);
+    color: #504030;
+    vertical-align: middle;
+}
+
+.format-table tr:last-child td {
+    border-bottom: none;
+}
+
+.dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* Copy method GIFs */
+.copy-method {
+    width: 90%;
+    border-radius: 8px;
+    border: 1px solid rgba(210, 200, 185, 0.4);
+    display: block;
+    margin-bottom: 0.5rem;
 }
 
 /* Footer */
 .ob-footer {
-    height: 30px;
-}
-
-
-#copy-method{
-    width:90%;
+    text-align: center;
+    padding: 1.5rem 0 1rem;
+    color: #b0a090;
+    font-size: 0.9rem;
 }
