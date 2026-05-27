@@ -1,4 +1,5 @@
 import { processFromLiveDOM } from './domUtils';
+import { htmlToMarkdown } from './markdownUtils';
 
 // Use window to persist state across repeated content-script injections.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -219,9 +220,29 @@ function latexToAsciiMath(latex: string): string {
     return s;
 }
 
+// ─── Markdown pipeline ──────────────────────────────────────────────────────
+
+async function setUpMarkdownPaste() {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+        if (!item.types.includes("text/html")) continue;
+        const blob = await item.getType("text/html");
+        const htmlText = await blob.text();
+        const doc = new DOMParser().parseFromString(htmlText, "text/html");
+        const markdown = htmlToMarkdown(doc.body).trim().replace(/\n{3,}/g, '\n\n');
+        await navigator.clipboard.writeText(markdown);
+        return;
+    }
+}
+
 // ─── Core pipeline ──────────────────────────────────────────────────────────
 
 async function setUpMathPaste(imgId: string | null) {
+    if (imgId === 'math_paste_Markdown') {
+        await setUpMarkdownPaste();
+        return;
+    }
+
     const formatFn = win.__mathpasteOptionToFunction[imgId];
     if (!formatFn) return;
 
