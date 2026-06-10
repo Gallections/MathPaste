@@ -1,14 +1,12 @@
 {
     "manifest_version": 3,
     "name": "Math Paste",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "An light weight application that aims to ease the transfer of rendered math equations from GPT to Notion",
     "permissions": [
-        "activeTab",
         "scripting",
         "clipboardRead",
         "clipboardWrite",
-        "storage",
         "tabs",
         "webNavigation"
     ],
