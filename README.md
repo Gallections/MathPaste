@@ -1,4 +1,4 @@
-# Math Paste (1.1.0)
+# Math Paste (1.2.0)
 Your GO-TO way to translate math from AI Chatbots to online notebooks!
 
 ## Demo
@@ -22,10 +22,10 @@ Video Demo: [🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 - [Tech Stack](#tech-stack)
 
 ## Getting Started
-This Chrome extension is under active development and will be published to the Chrome Web Store soon. For an early start, follow the instructions below.
+MathPaste v1.2.0 is available on the Chrome Web Store, or you can install it manually from source.
 
 ### Chrome Extension
-Coming soon to the Chrome Web Store!
+Available on the Chrome Web Store — search for **Math Paste** or install from source below.
 
 ### Installation
 
@@ -62,10 +62,8 @@ npm run build
 6. Paste into your notebook app. The math will be formatted correctly.
 7. Press **`Alt+Shift+M`** to toggle the extension on/off.
 
-> **Note:** Copy math equations top-to-bottom (not left-to-right) for best results.
-
 ### Switching Tabs
-When moving to a new tab, **refresh** the page to re-inject the extension UI.
+MathPaste auto-injects when you switch to a new tab — no refresh needed.
 
 ### Common Issues
 - If the extension stops responding, reload it from `chrome://extensions/`.
@@ -82,6 +80,7 @@ When moving to a new tab, **refresh** the page to re-inject the extension UI.
 | **Typst** | `$ … $` | Typst |
 | **MediaWiki** | `<math>…</math>` | Wikipedia / MediaWiki |
 | **AsciiMath** | ASCII notation | AsciiMath renderers |
+| **Markdown** | `$…$` + `**bold**` etc. | Any Markdown editor |
 | **None** | — | Passthrough (no conversion) |
 
 ## Tech Stack
