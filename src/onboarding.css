@@ -48,6 +48,23 @@ a:hover {
     margin-top: 0.4rem;
 }
 
+/* Pin-to-toolbar tip */
+.ob-tip {
+    background: rgba(124, 58, 237, 0.08);
+    border: 1px solid rgba(124, 58, 237, 0.25);
+    color: #504030;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 900px;
+    margin: -1.5rem auto 2rem;
+}
+
+.ob-tip strong {
+    color: #2e2016;
+}
+
 /* Sections */
 section {
     margin-bottom: 2rem;
@@ -67,6 +84,57 @@ section {
     align-items: center;
     justify-content: center;
     margin-top: 0.5rem;
+}
+
+.demo-video-link {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 640px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(140, 110, 60, 0.15);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.demo-video-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(140, 110, 60, 0.22);
+}
+
+.demo-video-link img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.demo-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(30, 20, 12, 0.65);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    line-height: 1;
+    padding-left: 4px; /* optically center the triangle */
+    backdrop-filter: blur(2px);
+}
+
+.demo-caption {
+    margin-top: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.demo-caption a {
+    color: #7a6555;
+    font-weight: 600;
 }
 
 h2 {

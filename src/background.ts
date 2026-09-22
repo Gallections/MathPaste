@@ -1,7 +1,15 @@
 let extensionEnabled = true;
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+// Only the very first install should open onboarding — not every extension
+// update, Chrome update, or reload of an unpacked build during development.
+export function shouldShowOnboarding(reason: string): boolean {
+    return reason === "install";
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+    if (shouldShowOnboarding(details.reason)) {
+        chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+    }
 });
 
 
