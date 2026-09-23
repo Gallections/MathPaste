@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { openDocs, buildPopup } from './popup';
-import { FUNCTIONALITY_KEY, UI_KEY } from './state';
+import { FUNCTIONALITY_KEY, UI_KEY, THEME_KEY } from './state';
+
+type ChangeListener = (changes: Record<string, { newValue?: unknown }>, area: string) => void;
 
 function mockChrome(store: Record<string, unknown> = {}) {
-    return {
+    const changeListeners: ChangeListener[] = [];
+    const chromeMock = {
         tabs: { create: vi.fn() },
         runtime: {
             getURL: vi.fn((path: string) => `chrome-extension://test/${path}`),
@@ -12,31 +14,65 @@ function mockChrome(store: Record<string, unknown> = {}) {
             local: {
                 get: vi.fn((key: string) => Promise.resolve({ [key]: store[key] })),
                 set: vi.fn((obj: Record<string, unknown>) => {
-                    Object.assign(store, obj);
+                    for (const [key, newValue] of Object.entries(obj)) {
+                        store[key] = newValue;
+                        for (const listener of changeListeners) {
+                            listener({ [key]: { newValue } }, 'local');
+                        }
+                    }
                     return Promise.resolve();
                 }),
             },
+            onChanged: {
+                addListener: vi.fn((cb: ChangeListener) => changeListeners.push(cb)),
+            },
         },
     } as unknown as Pick<typeof chrome, "tabs" | "runtime" | "storage">;
+
+    return { chromeMock, store, changeListeners };
+}
+
+function mockMatchMedia(matchesDark = false) {
+    return vi.fn((query: string) => ({
+        matches: query.includes('dark') && matchesDark,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    }));
+}
+
+/**
+ * popup.ts runs side effects at module load (applies the stored theme,
+ * registers onThemeChange, reads window.matchMedia) — so chrome and
+ * matchMedia must be stubbed BEFORE it's imported, and each test needs a
+ * fresh module instance (reset) to re-run that top-level setup.
+ */
+async function loadPopup(chromeMock: unknown, matchesDark = false) {
+    vi.resetModules();
+    vi.stubGlobal('chrome', chromeMock);
+    vi.stubGlobal('matchMedia', mockMatchMedia(matchesDark));
+    return import('./popup');
 }
 
 afterEach(() => {
     vi.unstubAllGlobals();
+    document.documentElement.removeAttribute('data-theme');
 });
 
 describe('openDocs', () => {
-    it('opens onboarding.html in a new tab', () => {
-        const chromeMock = mockChrome();
-        openDocs(chromeMock);
+    it('opens onboarding.html in a new tab', async () => {
+        const { chromeMock } = mockChrome();
+        const { openDocs } = await loadPopup(chromeMock);
+        openDocs(chromeMock as never);
         expect(chromeMock.runtime.getURL).toHaveBeenCalledWith('onboarding.html');
         expect(chromeMock.tabs.create).toHaveBeenCalledWith({
             url: 'chrome-extension://test/onboarding.html',
         });
     });
 
-    it('defaults to the global chrome API when none is provided', () => {
-        const chromeMock = mockChrome();
-        vi.stubGlobal('chrome', chromeMock);
+    it('defaults to the global chrome API when none is provided', async () => {
+        const { chromeMock } = mockChrome();
+        const { openDocs } = await loadPopup(chromeMock);
         openDocs();
         expect(chromeMock.tabs.create).toHaveBeenCalledWith({
             url: 'chrome-extension://test/onboarding.html',
@@ -44,12 +80,10 @@ describe('openDocs', () => {
     });
 });
 
-describe('buildPopup', () => {
-    it('renders a docs button with an icon, wired to openDocs', () => {
-        const chromeMock = mockChrome();
-        vi.stubGlobal('chrome', chromeMock);
-        // The click handler calls window.close() after opening the docs tab;
-        // stub it so jsdom doesn't tear down the window for later tests.
+describe('buildPopup — home view', () => {
+    it('renders a docs button with an icon, wired to openDocs', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
         const closeSpy = vi.spyOn(window, 'close').mockImplementation(() => {});
 
         const popup = buildPopup();
@@ -68,8 +102,9 @@ describe('buildPopup', () => {
         closeSpy.mockRestore();
     });
 
-    it('renders the extension title and a GitHub link with an icon, no bare emoji or arrow glyphs', () => {
-        vi.stubGlobal('chrome', mockChrome());
+    it('renders the extension title and a GitHub link with an icon, no bare emoji or arrow glyphs', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
         const popup = buildPopup();
 
         expect(popup.querySelector('.pop-title')?.textContent).toBe('Math Paste');
@@ -79,12 +114,52 @@ describe('buildPopup', () => {
         expect(repoLink?.textContent).toContain('GitHub');
         expect(repoLink?.querySelector('svg.pop-footer-icon')).not.toBeNull();
 
-        // No leftover emoji/arrow glyphs anywhere in the popup.
         expect(popup.textContent).not.toMatch(/[\u{1F300}-\u{1FAFF}↖-⇿]/u);
     });
 
-    it('renders a functionality toggle and a UI toggle, each with an icon', () => {
-        vi.stubGlobal('chrome', mockChrome());
+    it('home view is visible and settings view is hidden by default', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
+        const popup = buildPopup();
+
+        const views = popup.querySelectorAll('.pop-view');
+        expect(views.length).toBe(2);
+        expect(views[0].classList.contains('pop-view-hidden')).toBe(false);
+        expect(views[1].classList.contains('pop-view-hidden')).toBe(true);
+    });
+});
+
+describe('buildPopup — settings view toggle (gear button)', () => {
+    it('switches views, title, and icon when the gear/back button is clicked', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
+        const popup = buildPopup();
+
+        const [homeView, settingsView] = popup.querySelectorAll('.pop-view');
+        const viewToggleBtn = popup.querySelector<HTMLButtonElement>('#mp-view-toggle')!;
+        const title = popup.querySelector('.pop-title')!;
+
+        expect(viewToggleBtn.querySelector('svg')).not.toBeNull();
+        expect(viewToggleBtn.getAttribute('aria-label')).toBe('Open settings');
+
+        viewToggleBtn.click();
+        expect(homeView.classList.contains('pop-view-hidden')).toBe(true);
+        expect(settingsView.classList.contains('pop-view-hidden')).toBe(false);
+        expect(title.textContent).toBe('Settings');
+        expect(viewToggleBtn.getAttribute('aria-label')).toBe('Back');
+
+        viewToggleBtn.click();
+        expect(homeView.classList.contains('pop-view-hidden')).toBe(false);
+        expect(settingsView.classList.contains('pop-view-hidden')).toBe(true);
+        expect(title.textContent).toBe('Math Paste');
+        expect(viewToggleBtn.getAttribute('aria-label')).toBe('Open settings');
+    });
+});
+
+describe('buildPopup — settings toggles', () => {
+    it('renders a functionality toggle and a UI toggle, each with an icon', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
         const popup = buildPopup();
 
         const functionalityInput = popup.querySelector<HTMLInputElement>('#mp-toggle-functionality');
@@ -103,13 +178,13 @@ describe('buildPopup', () => {
     });
 
     it('initializes each toggle from stored state', async () => {
-        vi.stubGlobal('chrome', mockChrome({
+        const { chromeMock } = mockChrome({
             [FUNCTIONALITY_KEY]: false,
             [UI_KEY]: true,
-        }));
+        });
+        const { buildPopup } = await loadPopup(chromeMock);
         const popup = buildPopup();
 
-        // getValue() resolves asynchronously — flush microtasks.
         await Promise.resolve();
         await Promise.resolve();
 
@@ -120,9 +195,9 @@ describe('buildPopup', () => {
         expect(uiInput!.checked).toBe(true);
     });
 
-    it('persists a toggle change to its own storage key, leaving the other untouched', () => {
-        const chromeMock = mockChrome();
-        vi.stubGlobal('chrome', chromeMock);
+    it('persists a toggle change to its own storage key, leaving the other untouched', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
         const popup = buildPopup();
 
         const functionalityInput = popup.querySelector<HTMLInputElement>('#mp-toggle-functionality')!;
@@ -133,5 +208,93 @@ describe('buildPopup', () => {
         expect(chromeMock.storage.local.set).not.toHaveBeenCalledWith(
             expect.objectContaining({ [UI_KEY]: expect.anything() })
         );
+    });
+});
+
+describe('buildPopup — theme selector', () => {
+    it('renders three theme options, each with an icon', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
+        const popup = buildPopup();
+
+        const options = popup.querySelectorAll<HTMLButtonElement>('.pop-theme-option');
+        expect(options.length).toBe(3);
+        expect([...options].map((o) => o.dataset.value)).toEqual(['light', 'dark', 'system']);
+        for (const opt of options) {
+            expect(opt.querySelector('svg.pop-theme-icon')).not.toBeNull();
+        }
+    });
+
+    it('marks the stored theme as active on load', async () => {
+        const { chromeMock } = mockChrome({ [THEME_KEY]: 'dark' });
+        const { buildPopup } = await loadPopup(chromeMock);
+        const popup = buildPopup();
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const active = popup.querySelector('.pop-theme-active') as HTMLButtonElement;
+        expect(active.dataset.value).toBe('dark');
+    });
+
+    it('persists a theme choice and updates which option is marked active', async () => {
+        const { chromeMock } = mockChrome();
+        const { buildPopup } = await loadPopup(chromeMock);
+        const popup = buildPopup();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const darkOption = popup.querySelector<HTMLButtonElement>('[data-value="dark"]')!;
+        darkOption.click();
+
+        expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ [THEME_KEY]: 'dark' });
+        expect(darkOption.classList.contains('pop-theme-active')).toBe(true);
+        expect(popup.querySelector('[data-value="light"]')!.classList.contains('pop-theme-active')).toBe(false);
+    });
+});
+
+describe('theme application to the popup document', () => {
+    it('applies the stored "dark" theme to <html> on load', async () => {
+        const { chromeMock } = mockChrome({ [THEME_KEY]: 'dark' });
+        await loadPopup(chromeMock);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.documentElement.dataset.theme).toBe('dark');
+    });
+
+    it('applies "light" by default when nothing is stored', async () => {
+        const { chromeMock } = mockChrome();
+        await loadPopup(chromeMock);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.documentElement.dataset.theme).toBe('light');
+    });
+
+    it('resolves "system" using matchMedia', async () => {
+        const { chromeMock } = mockChrome({ [THEME_KEY]: 'system' });
+        await loadPopup(chromeMock, /* matchesDark */ true);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.documentElement.dataset.theme).toBe('dark');
+    });
+
+    it('re-applies the theme live when another tab changes it', async () => {
+        const { chromeMock } = mockChrome({ [THEME_KEY]: 'light' });
+        await loadPopup(chromeMock);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(document.documentElement.dataset.theme).toBe('light');
+
+        // A real write (as if it came from another tab) — the mock's set()
+        // both updates the backing store and fires onChanged, same as
+        // real chrome.storage always does.
+        await chromeMock.storage.local.set({ [THEME_KEY]: 'dark' });
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(document.documentElement.dataset.theme).toBe('dark');
     });
 });

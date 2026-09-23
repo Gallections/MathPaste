@@ -12,7 +12,10 @@
 export const FORMAT_KEY = "mathpaste_format";
 export const FUNCTIONALITY_KEY = "mathpaste_functionality_enabled";
 export const UI_KEY = "mathpaste_ui_enabled";
+export const THEME_KEY = "mathpaste_theme";
 export const GENERATION_KEY = "mathpaste_generation";
+
+export type Theme = "light" | "dark" | "system";
 
 export async function getStoredFormat(): Promise<string | null> {
     const result = await chrome.storage.local.get(FORMAT_KEY);
@@ -39,6 +42,31 @@ export async function getStoredUiEnabled(): Promise<boolean> {
 
 export async function setStoredUiEnabled(enabled: boolean): Promise<void> {
     await chrome.storage.local.set({ [UI_KEY]: enabled });
+}
+
+// Light is the app's current default look, so it's also the default here.
+export async function getStoredTheme(): Promise<Theme> {
+    const result = await chrome.storage.local.get(THEME_KEY);
+    return (result[THEME_KEY] as Theme | undefined) ?? "light";
+}
+
+export async function setStoredTheme(theme: Theme): Promise<void> {
+    await chrome.storage.local.set({ [THEME_KEY]: theme });
+}
+
+/**
+ * Resolves "system" against the OS/browser color-scheme preference; "light"
+ * and "dark" pass through unchanged. `matchMedia` is injectable (defaults to
+ * the real one) so this stays testable without a jsdom matchMedia shim.
+ */
+export function resolveTheme(
+    theme: Theme,
+    matchMedia: (query: string) => { matches: boolean } = (q) => window.matchMedia(q)
+): "light" | "dark" {
+    if (theme === "system") {
+        return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return theme;
 }
 
 /**
@@ -87,6 +115,17 @@ export function onUiEnabledChange(callback: (enabled: boolean) => void): void {
         const change = changes[UI_KEY];
         if (change && typeof change.newValue === "boolean") {
             callback(change.newValue);
+        }
+    });
+}
+
+/** Fires whenever any tab (including this one) persists a new theme preference. */
+export function onThemeChange(callback: (theme: Theme) => void): void {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== "local") return;
+        const change = changes[THEME_KEY];
+        if (change && typeof change.newValue === "string") {
+            callback(change.newValue as Theme);
         }
     });
 }

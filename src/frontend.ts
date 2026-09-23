@@ -1,4 +1,10 @@
-import { getStoredFormat, setStoredFormat, getStoredUiEnabled, getStoredGeneration, onFormatChange, onUiEnabledChange } from "./state";
+import {
+    getStoredFormat, setStoredFormat,
+    getStoredUiEnabled, onUiEnabledChange,
+    getStoredGeneration,
+    getStoredTheme, resolveTheme, onThemeChange,
+    onFormatChange,
+} from "./state";
 import { ICON_X, createIconElement } from "./icons";
 
 // ─── Format registry ─────────────────────────────────────────────────────────
@@ -22,6 +28,11 @@ const FORMATS: Record<string, FormatDef> = {
 };
 
 // ─── Shadow CSS (fully isolated — no !important needed) ──────────────────────
+// Theme tokens on :host, overridden by :host([data-theme="dark"]) — set from
+// JS (see applyTheme below) after resolving the stored preference, "system"
+// included. Custom properties are the only clean way to theme shadow-DOM
+// content from outside without breaking the isolation the shadow root exists
+// to provide.
 
 const SHADOW_CSS = `
 * { box-sizing: border-box; }
@@ -36,6 +47,42 @@ const SHADOW_CSS = `
     user-select: none;
     -webkit-user-select: none;
     font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+
+    --mp-pill-bg: rgba(255,252,245,0.95);
+    --mp-pill-border: rgba(210,200,185,0.60);
+    --mp-pill-border-hover: rgba(180,165,145,0.80);
+    --mp-pill-shadow: 0 2px 16px rgba(140,110,60,0.12);
+    --mp-pill-shadow-hover: 0 4px 24px rgba(140,110,60,0.18);
+    --mp-text: #504030;
+    --mp-text-strong: #504030;
+    --mp-text-muted: #b0a090;
+    --mp-panel-bg: rgba(255,252,246,0.97);
+    --mp-panel-border: rgba(210,200,185,0.50);
+    --mp-panel-shadow: 0 8px 40px rgba(140,110,60,0.12), inset 0 0 0 1px rgba(255,248,235,0.60);
+    --mp-header-border: rgba(210,200,185,0.30);
+    --mp-close-hover-bg: rgba(80,64,48,0.08);
+    --mp-option-hover-bg: rgba(80,64,48,0.06);
+    --mp-option-active-bg: rgba(80,64,48,0.05);
+    --mp-name-color: rgba(80,64,48,0.85);
+}
+
+:host([data-theme="dark"]) {
+    --mp-pill-bg: rgba(32,27,22,0.92);
+    --mp-pill-border: rgba(122,106,88,0.45);
+    --mp-pill-border-hover: rgba(150,130,108,0.65);
+    --mp-pill-shadow: 0 2px 16px rgba(0,0,0,0.30);
+    --mp-pill-shadow-hover: 0 4px 24px rgba(0,0,0,0.38);
+    --mp-text: #d8cfc2;
+    --mp-text-strong: #f0e6d8;
+    --mp-text-muted: #8a7a68;
+    --mp-panel-bg: rgba(32,27,22,0.95);
+    --mp-panel-border: rgba(122,106,88,0.40);
+    --mp-panel-shadow: 0 8px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.04);
+    --mp-header-border: rgba(122,106,88,0.30);
+    --mp-close-hover-bg: rgba(255,245,230,0.08);
+    --mp-option-hover-bg: rgba(255,245,230,0.06);
+    --mp-option-active-bg: rgba(255,245,230,0.05);
+    --mp-name-color: rgba(216,207,194,0.85);
 }
 
 #toggle-math-paste {
@@ -44,23 +91,23 @@ const SHADOW_CSS = `
     gap: 7px;
     padding: 7px 13px;
     border-radius: 999px;
-    background: rgba(255,252,245,0.95);
-    border: 1px solid rgba(210,200,185,0.60);
-    box-shadow: 0 2px 16px rgba(140,110,60,0.12);
+    background: var(--mp-pill-bg);
+    border: 1px solid var(--mp-pill-border);
+    box-shadow: var(--mp-pill-shadow);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     cursor: grab;
-    color: #504030;
+    color: var(--mp-text);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
     white-space: nowrap;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
 }
 
 #toggle-math-paste:hover {
-    border-color: rgba(180,165,145,0.80);
-    box-shadow: 0 4px 24px rgba(140,110,60,0.18);
+    border-color: var(--mp-pill-border-hover);
+    box-shadow: var(--mp-pill-shadow-hover);
 }
 
 #mp-logo {
@@ -87,17 +134,17 @@ const SHADOW_CSS = `
     right: calc(100% + 10px);
     left: auto;
     width: 230px;
-    background: rgba(255,252,246,0.97);
-    border: 1px solid rgba(210,200,185,0.50);
+    background: var(--mp-panel-bg);
+    border: 1px solid var(--mp-panel-border);
     border-radius: 14px;
-    box-shadow: 0 8px 40px rgba(140,110,60,0.12), inset 0 0 0 1px rgba(255,248,235,0.60);
+    box-shadow: var(--mp-panel-shadow);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     overflow: hidden;
     opacity: 0;
     pointer-events: none;
     transform: translateX(6px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
+    transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s, border-color 0.15s;
 }
 
 #mathpaste-panel.mp-visible {
@@ -121,7 +168,7 @@ const SHADOW_CSS = `
     align-items: center;
     justify-content: space-between;
     padding: 11px 14px 9px;
-    border-bottom: 1px solid rgba(210,200,185,0.30);
+    border-bottom: 1px solid var(--mp-header-border);
     cursor: grab;
 }
 
@@ -131,14 +178,14 @@ const SHADOW_CSS = `
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.22em;
-    color: #b0a090;
+    color: var(--mp-text-muted);
     font-family: inherit;
 }
 
 #mp-close {
     all: unset;
     display: flex;
-    color: #b0a090;
+    color: var(--mp-text-muted);
     cursor: pointer;
     padding: 3px;
     border-radius: 4px;
@@ -152,8 +199,8 @@ const SHADOW_CSS = `
 }
 
 #mp-close:hover {
-    color: #504030;
-    background: rgba(80,64,48,0.08);
+    color: var(--mp-text-strong);
+    background: var(--mp-close-hover-bg);
 }
 
 #mp-options {
@@ -172,11 +219,11 @@ const SHADOW_CSS = `
 }
 
 .option-math-paste:hover {
-    background: rgba(80,64,48,0.06);
+    background: var(--mp-option-hover-bg);
 }
 
 .option-math-paste.mp-active {
-    background: rgba(80,64,48,0.05);
+    background: var(--mp-option-active-bg);
     border-left-color: var(--accent);
 }
 
@@ -188,12 +235,12 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 12px;
     font-family: inherit;
-    color: rgba(80,64,48,0.85);
+    color: var(--mp-name-color);
     transition: color 0.1s;
 }
 
 .option-math-paste.mp-active .mp-name {
-    color: #504030;
+    color: var(--mp-text-strong);
 }
 
 .mp-hint {
@@ -201,7 +248,7 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 10px;
     font-family: inherit;
-    color: #b0a090;
+    color: var(--mp-text-muted);
     letter-spacing: 0.02em;
 }
 `;
@@ -229,6 +276,19 @@ async function autoStart() {
 function startObserving() {
     observer = new MutationObserver(() => inject());
     observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// ─── Theme ───────────────────────────────────────────────────────────────────
+// Set on the shadow host as data-theme so SHADOW_CSS's
+// :host([data-theme="dark"]) block can pick it up — custom properties are
+// the cleanest way to theme shadow-DOM content from outside without
+// breaking the isolation it exists to provide.
+
+async function applyPillTheme() {
+    const host = document.getElementById("toggle-options-container");
+    if (!host) return;
+    const theme = await getStoredTheme();
+    host.dataset.theme = resolveTheme(theme);
 }
 
 // Re-initializes whenever the extension's generation changes (see state.ts:
@@ -277,6 +337,10 @@ async function initForCurrentGeneration() {
     });
 
     onFormatChange((formatId) => applyFormat(formatId, /* persist */ false));
+    onThemeChange(() => applyPillTheme());
+    // Only visibly matters while "system" is selected, but it's cheap to
+    // just always re-resolve rather than track which preference is active.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyPillTheme());
 }
 
 // ─── Injection ───────────────────────────────────────────────────────────────
@@ -305,6 +369,8 @@ function inject() {
         const header = shadowRoot.getElementById("mp-header") as HTMLElement;
         setupHover(host, panel);
         setupDrag(host, panel, toggle, header);
+
+        applyPillTheme();
 
         // Reflect whatever format is currently selected elsewhere, if any.
         getStoredFormat().then((formatId) => {

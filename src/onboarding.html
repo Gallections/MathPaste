@@ -103,7 +103,11 @@
             <ul>
                 <li>If the pill disappears, refresh the tab — it will reappear automatically.</li>
                 <li>If math isn't converting, make sure a format other than <strong>None</strong> is selected.</li>
-                <li>If the extension stops responding, reload it from <code>chrome://extensions/</code> and refresh the page.</li>
+                <li>If the extension stops responding, or a toggle in the popup doesn't seem to take effect on a
+                    tab that was already open before you last reloaded the extension, refresh that tab. Reloading
+                    the extension itself (from <code>chrome://extensions/</code>) only reconnects tabs you switch
+                    to or navigate afterward — a tab left untouched can keep running the previous version until
+                    it's refreshed.</li>
             </ul>
         </div>
     </section>

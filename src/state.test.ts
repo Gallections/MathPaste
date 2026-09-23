@@ -10,9 +10,13 @@ import {
     setStoredUiEnabled,
     getStoredGeneration,
     setStoredGeneration,
+    getStoredTheme,
+    setStoredTheme,
+    resolveTheme,
     onFormatChange,
     onFunctionalityEnabledChange,
     onUiEnabledChange,
+    onThemeChange,
 } from './state';
 
 type ChangeListener = (changes: Record<string, { oldValue?: unknown; newValue?: unknown }>, area: string) => void;
@@ -110,6 +114,37 @@ describe('generation storage', () => {
     });
 });
 
+describe('theme storage', () => {
+    it('defaults to "light" when nothing is stored', async () => {
+        vi.stubGlobal('chrome', mockChrome().chromeMock);
+        expect(await getStoredTheme()).toBe('light');
+    });
+
+    it('round-trips a stored theme', async () => {
+        vi.stubGlobal('chrome', mockChrome().chromeMock);
+        await setStoredTheme('dark');
+        expect(await getStoredTheme()).toBe('dark');
+    });
+});
+
+describe('resolveTheme', () => {
+    it('passes "light" and "dark" through unchanged', () => {
+        expect(resolveTheme('light')).toBe('light');
+        expect(resolveTheme('dark')).toBe('dark');
+    });
+
+    it('resolves "system" to "dark" when the OS prefers dark', () => {
+        const matchMedia = vi.fn(() => ({ matches: true }));
+        expect(resolveTheme('system', matchMedia)).toBe('dark');
+        expect(matchMedia).toHaveBeenCalledWith('(prefers-color-scheme: dark)');
+    });
+
+    it('resolves "system" to "light" when the OS does not prefer dark', () => {
+        const matchMedia = vi.fn(() => ({ matches: false }));
+        expect(resolveTheme('system', matchMedia)).toBe('light');
+    });
+});
+
 describe('onFormatChange', () => {
     it('notifies listeners when the format changes', async () => {
         const { chromeMock } = mockChrome();
@@ -200,6 +235,31 @@ describe('onUiEnabledChange', () => {
         vi.stubGlobal('chrome', chromeMock);
         const cb = vi.fn();
         onUiEnabledChange(cb);
+
+        changeListeners[0]({ [FORMAT_KEY]: { newValue: 'math_paste_Obsidian' } }, 'local');
+
+        expect(cb).not.toHaveBeenCalled();
+    });
+});
+
+describe('onThemeChange', () => {
+    it('notifies listeners when the theme changes', async () => {
+        const { chromeMock } = mockChrome();
+        vi.stubGlobal('chrome', chromeMock);
+        const cb = vi.fn();
+        onThemeChange(cb);
+
+        await setStoredTheme('dark');
+
+        expect(cb).toHaveBeenCalledTimes(1);
+        expect(cb).toHaveBeenCalledWith('dark');
+    });
+
+    it('ignores changes to unrelated keys', () => {
+        const { chromeMock, changeListeners } = mockChrome();
+        vi.stubGlobal('chrome', chromeMock);
+        const cb = vi.fn();
+        onThemeChange(cb);
 
         changeListeners[0]({ [FORMAT_KEY]: { newValue: 'math_paste_Obsidian' } }, 'local');
 
