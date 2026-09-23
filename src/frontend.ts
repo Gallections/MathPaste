@@ -1,3 +1,12 @@
+import {
+    getStoredFormat, setStoredFormat,
+    getStoredUiEnabled, onUiEnabledChange,
+    getStoredGeneration,
+    getStoredTheme, resolveTheme, onThemeChange,
+    onFormatChange,
+} from "./state";
+import { ICON_X, createIconElement } from "./icons";
+
 // ─── Format registry ─────────────────────────────────────────────────────────
 
 interface FormatDef {
@@ -9,7 +18,6 @@ interface FormatDef {
 
 const FORMATS: Record<string, FormatDef> = {
     "math_paste_Obsidian":  { label: "Obsidian",  abbr: "OBS", hint: "$…$",      color: "#7C3AED" },
-    "math_paste_Notion":    { label: "Notion",    abbr: "NOT", hint: "$…$",      color: "#94A3B8" },
     "math_paste_LaTex":     { label: "LaTeX",     abbr: "TEX", hint: "raw",      color: "#EF4444" },
     "math_paste_MathJax":   { label: "MathJax",   abbr: "MJX", hint: "\\(…\\)", color: "#22C55E" },
     "math_paste_Typst":     { label: "Typst",     abbr: "TYP", hint: "$ … $",   color: "#06B6D4" },
@@ -20,6 +28,11 @@ const FORMATS: Record<string, FormatDef> = {
 };
 
 // ─── Shadow CSS (fully isolated — no !important needed) ──────────────────────
+// Theme tokens on :host, overridden by :host([data-theme="dark"]) — set from
+// JS (see applyTheme below) after resolving the stored preference, "system"
+// included. Custom properties are the only clean way to theme shadow-DOM
+// content from outside without breaking the isolation the shadow root exists
+// to provide.
 
 const SHADOW_CSS = `
 * { box-sizing: border-box; }
@@ -34,6 +47,42 @@ const SHADOW_CSS = `
     user-select: none;
     -webkit-user-select: none;
     font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+
+    --mp-pill-bg: rgba(255,252,245,0.95);
+    --mp-pill-border: rgba(210,200,185,0.60);
+    --mp-pill-border-hover: rgba(180,165,145,0.80);
+    --mp-pill-shadow: 0 2px 16px rgba(140,110,60,0.12);
+    --mp-pill-shadow-hover: 0 4px 24px rgba(140,110,60,0.18);
+    --mp-text: #504030;
+    --mp-text-strong: #504030;
+    --mp-text-muted: #b0a090;
+    --mp-panel-bg: rgba(255,252,246,0.97);
+    --mp-panel-border: rgba(210,200,185,0.50);
+    --mp-panel-shadow: 0 8px 40px rgba(140,110,60,0.12), inset 0 0 0 1px rgba(255,248,235,0.60);
+    --mp-header-border: rgba(210,200,185,0.30);
+    --mp-close-hover-bg: rgba(80,64,48,0.08);
+    --mp-option-hover-bg: rgba(80,64,48,0.06);
+    --mp-option-active-bg: rgba(80,64,48,0.05);
+    --mp-name-color: rgba(80,64,48,0.85);
+}
+
+:host([data-theme="dark"]) {
+    --mp-pill-bg: rgba(32,27,22,0.92);
+    --mp-pill-border: rgba(122,106,88,0.45);
+    --mp-pill-border-hover: rgba(150,130,108,0.65);
+    --mp-pill-shadow: 0 2px 16px rgba(0,0,0,0.30);
+    --mp-pill-shadow-hover: 0 4px 24px rgba(0,0,0,0.38);
+    --mp-text: #d8cfc2;
+    --mp-text-strong: #f0e6d8;
+    --mp-text-muted: #8a7a68;
+    --mp-panel-bg: rgba(32,27,22,0.95);
+    --mp-panel-border: rgba(122,106,88,0.40);
+    --mp-panel-shadow: 0 8px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.04);
+    --mp-header-border: rgba(122,106,88,0.30);
+    --mp-close-hover-bg: rgba(255,245,230,0.08);
+    --mp-option-hover-bg: rgba(255,245,230,0.06);
+    --mp-option-active-bg: rgba(255,245,230,0.05);
+    --mp-name-color: rgba(216,207,194,0.85);
 }
 
 #toggle-math-paste {
@@ -42,23 +91,23 @@ const SHADOW_CSS = `
     gap: 7px;
     padding: 7px 13px;
     border-radius: 999px;
-    background: rgba(255,252,245,0.95);
-    border: 1px solid rgba(210,200,185,0.60);
-    box-shadow: 0 2px 16px rgba(140,110,60,0.12);
+    background: var(--mp-pill-bg);
+    border: 1px solid var(--mp-pill-border);
+    box-shadow: var(--mp-pill-shadow);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     cursor: grab;
-    color: #504030;
+    color: var(--mp-text);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.1em;
     white-space: nowrap;
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s;
 }
 
 #toggle-math-paste:hover {
-    border-color: rgba(180,165,145,0.80);
-    box-shadow: 0 4px 24px rgba(140,110,60,0.18);
+    border-color: var(--mp-pill-border-hover);
+    box-shadow: var(--mp-pill-shadow-hover);
 }
 
 #mp-logo {
@@ -85,17 +134,17 @@ const SHADOW_CSS = `
     right: calc(100% + 10px);
     left: auto;
     width: 230px;
-    background: rgba(255,252,246,0.97);
-    border: 1px solid rgba(210,200,185,0.50);
+    background: var(--mp-panel-bg);
+    border: 1px solid var(--mp-panel-border);
     border-radius: 14px;
-    box-shadow: 0 8px 40px rgba(140,110,60,0.12), inset 0 0 0 1px rgba(255,248,235,0.60);
+    box-shadow: var(--mp-panel-shadow);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     overflow: hidden;
     opacity: 0;
     pointer-events: none;
     transform: translateX(6px);
-    transition: opacity 0.18s ease, transform 0.18s ease;
+    transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s, border-color 0.15s;
 }
 
 #mathpaste-panel.mp-visible {
@@ -119,7 +168,7 @@ const SHADOW_CSS = `
     align-items: center;
     justify-content: space-between;
     padding: 11px 14px 9px;
-    border-bottom: 1px solid rgba(210,200,185,0.30);
+    border-bottom: 1px solid var(--mp-header-border);
     cursor: grab;
 }
 
@@ -129,24 +178,29 @@ const SHADOW_CSS = `
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.22em;
-    color: #b0a090;
+    color: var(--mp-text-muted);
     font-family: inherit;
 }
 
 #mp-close {
     all: unset;
-    font-size: 11px;
-    color: #b0a090;
+    display: flex;
+    color: var(--mp-text-muted);
     cursor: pointer;
-    line-height: 1;
-    padding: 2px 3px;
+    padding: 3px;
     border-radius: 4px;
     transition: color 0.15s, background 0.15s;
 }
 
+#mp-close svg {
+    width: 11px;
+    height: 11px;
+    display: block;
+}
+
 #mp-close:hover {
-    color: #504030;
-    background: rgba(80,64,48,0.08);
+    color: var(--mp-text-strong);
+    background: var(--mp-close-hover-bg);
 }
 
 #mp-options {
@@ -165,11 +219,11 @@ const SHADOW_CSS = `
 }
 
 .option-math-paste:hover {
-    background: rgba(80,64,48,0.06);
+    background: var(--mp-option-hover-bg);
 }
 
 .option-math-paste.mp-active {
-    background: rgba(80,64,48,0.05);
+    background: var(--mp-option-active-bg);
     border-left-color: var(--accent);
 }
 
@@ -181,12 +235,12 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 12px;
     font-family: inherit;
-    color: rgba(80,64,48,0.85);
+    color: var(--mp-name-color);
     transition: color 0.1s;
 }
 
 .option-math-paste.mp-active .mp-name {
-    color: #504030;
+    color: var(--mp-text-strong);
 }
 
 .mp-hint {
@@ -194,7 +248,7 @@ const SHADOW_CSS = `
     white-space: nowrap;
     font-size: 10px;
     font-family: inherit;
-    color: #b0a090;
+    color: var(--mp-text-muted);
     letter-spacing: 0.02em;
 }
 `;
@@ -207,63 +261,130 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let shadowRoot: ShadowRoot | null = null;
 
 // ─── Auto-start ──────────────────────────────────────────────────────────────
+// The UI toggle and format selection are shared across every tab via
+// chrome.storage.local (see state.ts), so a fresh tab starts in whatever
+// state the extension was last left in — not always-on with no format.
 
-function autoStart() {
-    isActiveContent = true;
+async function autoStart() {
+    isActiveContent = await getStoredUiEnabled();
+    if (isActiveContent) {
+        startObserving();
+        inject();
+    }
+}
+
+function startObserving() {
     observer = new MutationObserver(() => inject());
     observer.observe(document.body, { childList: true, subtree: true });
-    inject();
 }
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", autoStart);
-} else {
-    autoStart();
+// ─── Theme ───────────────────────────────────────────────────────────────────
+// Set on the shadow host as data-theme so SHADOW_CSS's
+// :host([data-theme="dark"]) block can pick it up — custom properties are
+// the cleanest way to theme shadow-DOM content from outside without
+// breaking the isolation it exists to provide.
+
+async function applyPillTheme() {
+    const host = document.getElementById("toggle-options-container");
+    if (!host) return;
+    const theme = await getStoredTheme();
+    host.dataset.theme = resolveTheme(theme);
 }
 
-// ─── Message handler ─────────────────────────────────────────────────────────
+// Re-initializes whenever the extension's generation changes (see state.ts:
+// a fresh install, update, chrome update, or dev reload) — not merely on
+// this script's first-ever injection into the page. That also covers plain
+// re-injection into a page already running the CURRENT generation (e.g.
+// background.ts re-injects on tab-activate/navigation, and SPAs like
+// ChatGPT/Claude fire navigation-completed events on client-side route
+// changes without a real reload) — same generation means skip, so we don't
+// stack another MutationObserver and another pair of storage listeners.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const win = window as any;
 
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.toggle === undefined) return;
-    isActiveContent = message.toggle;
+initForCurrentGeneration();
 
-    if (isActiveContent) {
-        observer = new MutationObserver(() => inject());
-        observer.observe(document.body, { childList: true, subtree: true });
-        inject();
+async function initForCurrentGeneration() {
+    const generation = await getStoredGeneration();
+    if (win.__mathpasteFrontendGeneration === generation) return;
+    win.__mathpasteFrontendGeneration = generation;
+
+    // Drop any pill left by a previous generation — its click handlers and
+    // chrome.runtime.getURL() calls are tied to an extension context that's
+    // now invalidated, so it would silently stop working if left in place.
+    document.getElementById("toggle-options-container")?.remove();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", autoStart);
     } else {
-        document.getElementById("toggle-options-container")?.remove();
-        shadowRoot = null;
-        observer?.disconnect();
-        observer = null;
+        autoStart();
     }
-});
+
+    // ─── Cross-tab state sync ──────────────────────────────────────────────
+
+    onUiEnabledChange((enabled) => {
+        isActiveContent = enabled;
+
+        if (isActiveContent) {
+            startObserving();
+            inject();
+        } else {
+            document.getElementById("toggle-options-container")?.remove();
+            shadowRoot = null;
+            observer?.disconnect();
+            observer = null;
+        }
+    });
+
+    onFormatChange((formatId) => applyFormat(formatId, /* persist */ false));
+    onThemeChange(() => applyPillTheme());
+    // Only visibly matters while "system" is selected, but it's cheap to
+    // just always re-resolve rather than track which preference is active.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyPillTheme());
+}
 
 // ─── Injection ───────────────────────────────────────────────────────────────
 
 function inject() {
     if (document.getElementById("toggle-options-container")) return;
 
-    const host = document.createElement("div");
-    host.id = "toggle-options-container";
+    try {
+        const host = document.createElement("div");
+        host.id = "toggle-options-container";
 
-    // Shadow root isolates our CSS from the host page entirely
-    shadowRoot = host.attachShadow({ mode: "open" });
+        // Shadow root isolates our CSS from the host page entirely
+        shadowRoot = host.attachShadow({ mode: "open" });
 
-    const style = document.createElement("style");
-    style.textContent = SHADOW_CSS;
-    shadowRoot.appendChild(style);
+        const style = document.createElement("style");
+        style.textContent = SHADOW_CSS;
+        shadowRoot.appendChild(style);
 
-    const panel  = buildPanel();
-    const toggle = buildToggle();
+        const panel  = buildPanel();
+        const toggle = buildToggle();
 
-    shadowRoot.appendChild(panel);
-    shadowRoot.appendChild(toggle);
-    document.body.appendChild(host);
+        shadowRoot.appendChild(panel);
+        shadowRoot.appendChild(toggle);
+        document.body.appendChild(host);
 
-    const header = shadowRoot.getElementById("mp-header") as HTMLElement;
-    setupHover(host, panel);
-    setupDrag(host, panel, toggle, header);
+        const header = shadowRoot.getElementById("mp-header") as HTMLElement;
+        setupHover(host, panel);
+        setupDrag(host, panel, toggle, header);
+
+        applyPillTheme();
+
+        // Reflect whatever format is currently selected elsewhere, if any.
+        getStoredFormat().then((formatId) => {
+            if (formatId) applyFormat(formatId, /* persist */ false);
+        });
+    } catch {
+        // buildToggle() calls chrome.runtime.getURL(), which throws once
+        // this generation's extension context is invalidated. That can only
+        // happen here if this is an orphaned instance's MutationObserver
+        // still firing after a newer generation already took over — stop
+        // watching so it doesn't keep erroring on every DOM mutation.
+        observer?.disconnect();
+        observer = null;
+    }
 }
 
 // ─── Toggle pill ─────────────────────────────────────────────────────────────
@@ -313,7 +434,7 @@ function buildHeader(): HTMLElement {
     const close = document.createElement("button");
     close.id = "mp-close";
     close.setAttribute("aria-label", "Close MathPaste");
-    close.textContent = "✕";
+    close.appendChild(createIconElement(ICON_X));
     close.addEventListener("click", (e) => {
         e.stopPropagation();
         const host = document.getElementById("toggle-options-container");
@@ -349,7 +470,7 @@ function buildOptionsList(): HTMLElement {
         row.appendChild(dot);
         row.appendChild(name);
         row.appendChild(hint);
-        row.addEventListener("click", () => selectFormat(id));
+        row.addEventListener("click", () => applyFormat(id));
         list.appendChild(row);
     }
 
@@ -358,7 +479,13 @@ function buildOptionsList(): HTMLElement {
 
 // ─── Format selection ────────────────────────────────────────────────────────
 
-function selectFormat(formatId: string) {
+/**
+ * Updates this tab's pill/panel to reflect `formatId`. By default also
+ * persists it to chrome.storage.local so every other tab picks it up via
+ * onFormatChange — pass persist: false when applying a change that just
+ * arrived from another tab, to avoid an unnecessary redundant write.
+ */
+function applyFormat(formatId: string, persist = true) {
     const fmt = FORMATS[formatId];
     if (!fmt || !shadowRoot) return;
 
@@ -376,7 +503,9 @@ function selectFormat(formatId: string) {
         if (active) row.style.setProperty("--accent", fmt.color);
     }
 
-    chrome.runtime.sendMessage({ action: "functionChange", imgId: formatId });
+    if (persist) {
+        setStoredFormat(formatId);
+    }
 }
 
 // ─── Hover ───────────────────────────────────────────────────────────────────

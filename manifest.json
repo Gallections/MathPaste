@@ -8,7 +8,8 @@
         "clipboardRead",
         "clipboardWrite",
         "tabs",
-        "webNavigation"
+        "webNavigation",
+        "storage"
     ],
     "host_permissions": ["<all_urls>"],
     "icons": {
@@ -35,6 +36,7 @@
     ],
     "action": {
         "default_title": "Math Paste",
+        "default_popup": "src/popup.html",
         "default_icon": {
             "16": "icons/favicons/mathPaste-16x16.png",
             "48": "icons/favicons/mathPaste-48x48.png",

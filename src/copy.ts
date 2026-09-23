@@ -1,16 +1,28 @@
 import { processFromLiveDOM } from './domUtils';
 import { htmlToMarkdown } from './markdownUtils';
+import { getStoredFormat, getStoredFunctionalityEnabled, getStoredGeneration, onFormatChange, onFunctionalityEnabledChange } from './state';
 
 // Use window to persist state across repeated content-script injections.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const win = window as any;
 
-if (typeof win.__mathpasteInit === "undefined") {
-    win.__mathpasteInit = true;
+// Re-initializes whenever the extension's generation changes (see state.ts:
+// a fresh install, update, chrome update, or dev reload) — not merely on
+// this script's first-ever injection into the page. A plain one-time flag
+// can't tell those apart, since `window` survives an update even though the
+// old script's extension context doesn't; without this, a tab that already
+// had MathPaste running before an update would keep listening via a stale
+// reference and never pick up anything again until manually refreshed.
+initForCurrentGeneration();
+
+async function initForCurrentGeneration() {
+    const generation = await getStoredGeneration();
+    if (win.__mathpasteGeneration === generation) return;
+    win.__mathpasteGeneration = generation;
+
     // Format functions are forward-declared — safe because content scripts compile as IIFE (hoisted).
     win.__mathpasteOptionToFunction = {
         "math_paste_Obsidian":  wrappedFormat,
-        "math_paste_Notion":    wrappedFormat,
         "math_paste_LaTex":     latexFormat,
         "math_paste_MathJax":   mathjaxFormat,
         "math_paste_Typst":     typstFormat,
@@ -18,30 +30,34 @@ if (typeof win.__mathpasteInit === "undefined") {
         "math_paste_AsciiMath": asciimathFormat,
         "math_paste_None":      null,
     };
-    win.__mathpasteIsActive = true;
-    win.__mathpasteListener = () => setUpMathPaste(null);
-    document.addEventListener("copy", win.__mathpasteListener);
+
+    // Drop whatever listener the previous generation registered, if any —
+    // that reference is still valid to remove even though the extension
+    // context it closed over is now invalidated.
+    if (typeof win.__mathpasteListener === "function") {
+        document.removeEventListener("copy", win.__mathpasteListener);
+    }
+
+    win.__mathpasteCurrentFormat = await getStoredFormat();
+    win.__mathpasteIsActive = await getStoredFunctionalityEnabled();
+    // A single stable listener that always reads the current format from
+    // win.__mathpasteCurrentFormat — no need to recreate it on every change.
+    win.__mathpasteListener = () => setUpMathPaste(win.__mathpasteCurrentFormat);
+    if (win.__mathpasteIsActive) {
+        document.addEventListener("copy", win.__mathpasteListener);
+    }
+
+    // Cross-tab state (see state.ts) — the selected format and the
+    // functionality toggle are shared via chrome.storage.local, so every tab
+    // converges on the same behaviour instead of only the tab that was
+    // active when changed.
+    onFormatChange((formatId) => { win.__mathpasteCurrentFormat = formatId; });
+    onFunctionalityEnabledChange((enabled) => {
+        win.__mathpasteIsActive = enabled;
+        document.removeEventListener("copy", win.__mathpasteListener);
+        if (enabled) document.addEventListener("copy", win.__mathpasteListener);
+    });
 }
-
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-    if (message.imgId !== undefined) {
-        if (win.__mathpasteIsActive) {
-            document.removeEventListener("copy", win.__mathpasteListener);
-            win.__mathpasteListener = () => setUpMathPaste(message.imgId);
-            document.addEventListener("copy", win.__mathpasteListener);
-        }
-    }
-
-    if (message.toggle !== undefined) {
-        win.__mathpasteIsActive = message.toggle;
-        win.__mathpasteListener = () => setUpMathPaste(null);
-        if (win.__mathpasteIsActive) {
-            document.addEventListener("copy", win.__mathpasteListener);
-        } else {
-            document.removeEventListener("copy", win.__mathpasteListener);
-        }
-    }
-});
 
 // ─── Format functions ───────────────────────────────────────────────────────
 

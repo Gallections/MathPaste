@@ -1,0 +1,338 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ─── Theme tokens ─── Light is the default; dark overrides below apply
+   whenever <html> carries data-theme="dark" (set by popup.ts after
+   resolving the stored preference, "system" included). */
+:root {
+    --pop-bg: #f0ece4;
+    --pop-text: #3a2e22;
+    --pop-text-strong: #2e2016;
+    --pop-text-muted: #7a6555;
+    --pop-text-faint: #b0a090;
+    --pop-card-bg: rgba(255, 252, 245, 0.97);
+    --pop-card-bg-soft: rgba(255, 252, 245, 0.7);
+    --pop-border: rgba(210, 200, 185, 0.6);
+    --pop-border-soft: rgba(210, 200, 185, 0.35);
+    --pop-accent: #7C3AED;
+    --pop-accent-soft: rgba(124, 58, 237, 0.08);
+    --pop-accent-border: rgba(124, 58, 237, 0.5);
+    --pop-switch-track: rgba(176, 160, 144, 0.4);
+    --pop-switch-thumb: #fffcf5;
+    --pop-shadow: rgba(140, 110, 60, 0.12);
+    --pop-hover-bg: rgba(80, 64, 48, 0.06);
+}
+
+:root[data-theme="dark"] {
+    --pop-bg: #1c1712;
+    --pop-text: #e6dccd;
+    --pop-text-strong: #f6efe4;
+    --pop-text-muted: #b6a794;
+    --pop-text-faint: #8a7a68;
+    --pop-card-bg: rgba(44, 37, 30, 0.92);
+    --pop-card-bg-soft: rgba(44, 37, 30, 0.65);
+    --pop-border: rgba(122, 106, 88, 0.4);
+    --pop-border-soft: rgba(122, 106, 88, 0.3);
+    --pop-accent: #a78bfa;
+    --pop-accent-soft: rgba(167, 139, 250, 0.12);
+    --pop-accent-border: rgba(167, 139, 250, 0.5);
+    --pop-switch-track: rgba(122, 106, 88, 0.5);
+    --pop-switch-thumb: #eee3d3;
+    --pop-shadow: rgba(0, 0, 0, 0.35);
+    --pop-hover-bg: rgba(255, 245, 230, 0.06);
+}
+
+body {
+    width: 260px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--pop-bg);
+    color: var(--pop-text);
+}
+
+#mp-popup {
+    padding: 16px;
+}
+
+/* ─── Header ─── */
+.pop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.pop-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.pop-logo {
+    height: 22px;
+    width: auto;
+    flex-shrink: 0;
+}
+
+.pop-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--pop-text-strong);
+}
+
+.pop-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--pop-text-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s;
+}
+
+.pop-icon-btn:hover {
+    color: var(--pop-text-strong);
+    background: var(--pop-hover-bg);
+}
+
+.pop-header-icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* ─── Views ─── */
+.pop-view-hidden {
+    display: none;
+}
+
+.pop-subtitle {
+    font-size: 0.8rem;
+    color: var(--pop-text-muted);
+    margin-bottom: 14px;
+    line-height: 1.4;
+}
+
+.pop-settings-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--pop-text-faint);
+    margin: 12px 0 6px;
+}
+
+.pop-settings-label:first-child {
+    margin-top: 0;
+}
+
+/* ─── Theme selector ─── */
+.pop-theme-group {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.pop-theme-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border: 1px solid var(--pop-border);
+    border-radius: 10px;
+    background: var(--pop-card-bg-soft);
+    color: var(--pop-text-muted);
+    font-family: inherit;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.pop-theme-option:hover {
+    border-color: var(--pop-accent-border);
+    color: var(--pop-text-strong);
+}
+
+.pop-theme-icon {
+    width: 15px;
+    height: 15px;
+}
+
+.pop-theme-option.pop-theme-active {
+    border-color: var(--pop-accent);
+    background: var(--pop-accent-soft);
+    color: var(--pop-accent);
+}
+
+/* ─── Toggle switches ─── */
+.pop-toggles {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+    border: 1px solid var(--pop-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--pop-card-bg-soft);
+}
+
+.pop-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+
+.pop-toggle-row + .pop-toggle-row {
+    border-top: 1px solid var(--pop-border-soft);
+}
+
+.pop-toggle-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: var(--pop-text-muted);
+}
+
+.pop-toggle-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.pop-toggle-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--pop-text-strong);
+}
+
+.pop-toggle-desc {
+    font-size: 0.68rem;
+    color: var(--pop-text-faint);
+}
+
+.pop-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.pop-switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+    /* Sits on top so every click reaches the real control directly, rather
+       than depending on the browser forwarding a click from the label. */
+    z-index: 1;
+}
+
+.pop-switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--pop-switch-track);
+    border-radius: 999px;
+    transition: background 0.15s;
+    /* Purely decorative — never intercept clicks meant for the input
+       underneath it. Its :checked-driven styling below is unaffected,
+       since that's a CSS state, not a pointer interaction. */
+    pointer-events: none;
+}
+
+.pop-switch-track::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--pop-switch-thumb);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s;
+}
+
+.pop-switch input:checked + .pop-switch-track {
+    background: var(--pop-accent);
+}
+
+.pop-switch input:checked + .pop-switch-track::before {
+    transform: translateX(14px);
+}
+
+.pop-switch input:focus-visible + .pop-switch-track {
+    outline: 2px solid var(--pop-accent);
+    outline-offset: 2px;
+}
+
+/* ─── Docs button ─── */
+.pop-docs-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--pop-border);
+    border-radius: 10px;
+    background: var(--pop-card-bg);
+    color: var(--pop-text);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 10px var(--pop-shadow);
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.pop-docs-btn:hover {
+    border-color: var(--pop-accent-border);
+    background: var(--pop-accent-soft);
+}
+
+.pop-btn-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+/* ─── Footer ─── */
+.pop-footer {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.pop-footer a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: var(--pop-text-faint);
+    text-decoration: none;
+}
+
+.pop-footer-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.pop-footer a:hover {
+    color: var(--pop-accent);
+    text-decoration: underline;
+}
