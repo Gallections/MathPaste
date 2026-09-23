@@ -1,5 +1,6 @@
 import { processFromLiveDOM } from './domUtils';
 import { htmlToMarkdown } from './markdownUtils';
+import { latexToMathML } from './latexToMathML';
 import { getStoredFormat, getStoredFunctionalityEnabled, getStoredGeneration, onFormatChange, onFunctionalityEnabledChange } from './state';
 
 // Use window to persist state across repeated content-script injections.
@@ -251,11 +252,221 @@ async function setUpMarkdownPaste() {
     }
 }
 
+// ─── Word pipeline ──────────────────────────────────────────────────────────
+// Unlike every other format, Word needs real MathML *elements* embedded in
+// the HTML clipboard payload — not an escaped text string — since Word's
+// paste handler recognizes embedded MathML and converts it into a native,
+// editable equation object automatically. KaTeX already renders a full
+// semantic MathML tree alongside its visual HTML (for accessibility), right
+// next to the LaTeX annotation — reusing that directly is more reliable
+// than re-deriving math structure from the LaTeX source ourselves, so it's
+// the primary path; latexToMathML.ts is only the fallback for plain-text
+// sources with no pre-rendered tree to reuse (e.g. Copilot).
+//
+// Strategy 1.5 (live DOM) turns out to matter *far* more here than for the
+// other formats: browsers frequently drop a KaTeX annotation's content from
+// the clipboard's serialized HTML — it's position:absolute; clip:rect(...)
+// hidden, screen-reader-only — even though sibling MathML tags survive.
+// Reading straight from the live DOM sidesteps that entirely, so it isn't
+// an edge-case fallback here; verified live that it's the path that
+// actually fires for real KaTeX output.
+
+async function setUpWordPaste() {
+    // Snapshot selection before any await — it's cleared/changed after async gaps.
+    const sel = window.getSelection();
+    const selRanges = sel
+        ? Array.from({ length: sel.rangeCount }, (_, i) => sel.getRangeAt(i).cloneRange())
+        : [];
+
+    const items = await navigator.clipboard.read();
+
+    // ── Strategy 1: HTML clipboard with rendered math (KaTeX, MathJax, MathML) ──
+    for (const item of items) {
+        if (!item.types.includes("text/html")) continue;
+        const blob = await item.getType("text/html");
+        const htmlText = await blob.text();
+        const doc = new DOMParser().parseFromString(htmlText, "text/html");
+        const { html, text, replaced } = processHTMLForWord(doc.body);
+        if (replaced > 0) {
+            await writeClipboard(html, text);
+            return;
+        }
+
+        // ── Strategy 1.5: HTML present but no annotations — fall back to live DOM ──
+        if (selRanges.length > 0) {
+            const liveResult = processFromLiveDOMForWord(selRanges);
+            if (liveResult) {
+                await writeClipboard(liveResult.html, liveResult.text);
+                return;
+            }
+        }
+
+        break; // HTML present but no math found — skip plain-text strategy
+    }
+
+    // ── Strategy 2: Plain text containing LaTeX delimiters ──
+    for (const item of items) {
+        if (!item.types.includes("text/plain")) continue;
+        const blob = await item.getType("text/plain");
+        const plain = await blob.text();
+        if (hasLatexDelimiters(plain)) {
+            const { html, text } = processPlainTextForWord(plain);
+            await writeClipboard(html, text);
+        }
+        return;
+    }
+}
+
+/**
+ * Word's counterpart to domUtils.ts's processFromLiveDOM: queries the live
+ * page DOM (not the clipboard's serialized HTML) for KaTeX/MathJax
+ * containers intersecting the given selection ranges, and builds an HTML
+ * fragment of their MathML content back to back. Like the plain-text
+ * fallback the other formats use in this same situation, surrounding
+ * non-math text isn't preserved here — only the equations are recovered.
+ */
+export function processFromLiveDOMForWord(ranges: Range[]): { html: string; text: string } | null {
+    if (ranges.length === 0) return null;
+
+    const candidates = Array.from(
+        document.querySelectorAll('.katex-display, .katex, mjx-container')
+    );
+
+    let matched: Element[] = [];
+    for (const container of candidates) {
+        for (const range of ranges) {
+            try {
+                if (range.intersectsNode(container)) {
+                    matched.push(container);
+                    break;
+                }
+            } catch {
+                // cross-origin frame or detached node — skip silently
+            }
+        }
+    }
+
+    matched = matched.filter(
+        el => !matched.some(other => other !== el && other.contains(el))
+    );
+
+    const container = document.createElement("div");
+    let found = false;
+
+    for (const el of matched) {
+        const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
+        if (!annotation) continue;
+        const latex = (annotation.textContent ?? '').trim();
+        if (!latex) continue;
+        const tag = el.tagName.toLowerCase();
+        const isBlock =
+            el.classList.contains('katex-display') ||
+            (tag === 'mjx-container' && el.hasAttribute('display'));
+
+        if (found) container.appendChild(document.createTextNode(' '));
+        container.appendChild(buildMathMLElement(annotation, latex, isBlock));
+        found = true;
+    }
+
+    if (!found) return null;
+    return { html: container.innerHTML, text: container.textContent ?? '' };
+}
+
+/**
+ * Like processHTML, but splices in a real <math> MathML element in place of
+ * each math container instead of a formatted text string — see the section
+ * comment above for why that distinction matters for Word specifically.
+ */
+export function processHTMLForWord(htmlBody: HTMLElement): { html: string; text: string; replaced: number } {
+    const clone = htmlBody.cloneNode(true) as HTMLElement;
+    const seen = new WeakSet<Element>();
+    let replaced = 0;
+
+    for (const annotation of Array.from(
+        clone.querySelectorAll('annotation[encoding="application/x-tex"]')
+    )) {
+        const latex = (annotation.textContent ?? '').trim();
+        if (!latex) continue;
+
+        const { container, isBlock } = findMathContainer(annotation as Element);
+        if (!container || seen.has(container)) continue;
+        seen.add(container);
+
+        const mathEl = buildMathMLElement(annotation as Element, latex, isBlock);
+        container.parentNode?.replaceChild(mathEl, container);
+        replaced++;
+    }
+
+    return { html: clone.innerHTML, text: clone.textContent ?? '', replaced };
+}
+
+/**
+ * Prefers KaTeX/MathJax's own pre-rendered MathML (the annotation's
+ * ancestor <math> element) — it's the renderer's own, presumably-correct
+ * conversion. Falls back to synthesizing one from the LaTeX source via
+ * latexToMathML when no such tree is present.
+ */
+function buildMathMLElement(annotation: Element, latex: string, isBlock: boolean): Element {
+    const existing = findMathMLAncestor(annotation);
+    if (existing) {
+        const el = existing.cloneNode(true) as Element;
+        el.setAttribute("xmlns", "http://www.w3.org/1998/Math/MathML");
+        if (isBlock) el.setAttribute("display", "block");
+        return el;
+    }
+
+    const parsed = new DOMParser().parseFromString(latexToMathML(latex, isBlock), "application/xml");
+    return document.importNode(parsed.documentElement, true);
+}
+
+/** Walks up from a LaTeX annotation to the nearest ancestor <math> element, if any. */
+function findMathMLAncestor(start: Element): Element | null {
+    let el: Element | null = start.parentElement;
+    while (el) {
+        if (el.tagName.toLowerCase() === "math") return el;
+        el = el.parentElement;
+    }
+    return null;
+}
+
+/**
+ * Plain-text counterpart of processHTMLForWord: builds an HTML fragment by
+ * walking the LaTeX-delimited text and alternating plain text nodes with
+ * synthesized <math> elements (via a detached container, so serialization
+ * via innerHTML never escapes the embedded XML).
+ */
+export function processPlainTextForWord(text: string): { html: string; text: string } {
+    const container = document.createElement("div");
+    const pattern = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|(?<!\$)\$([^$\n]+?)\$(?!\$)|\\\((.+?)\\\)/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            container.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+        }
+        const isBlock = match[1] !== undefined || match[2] !== undefined;
+        const latex = (match[1] ?? match[2] ?? match[3] ?? match[4] ?? '').trim();
+        const parsed = new DOMParser().parseFromString(latexToMathML(latex, isBlock), "application/xml");
+        container.appendChild(document.importNode(parsed.documentElement, true));
+        lastIndex = pattern.lastIndex;
+    }
+    if (lastIndex < text.length) {
+        container.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
+    return { html: container.innerHTML, text: container.textContent ?? text };
+}
+
 // ─── Core pipeline ──────────────────────────────────────────────────────────
 
 async function setUpMathPaste(imgId: string | null) {
     if (imgId === 'math_paste_Markdown') {
         await setUpMarkdownPaste();
+        return;
+    }
+    if (imgId === 'math_paste_Word') {
+        await setUpWordPaste();
         return;
     }
 

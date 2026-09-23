@@ -72,6 +72,7 @@ MathPaste auto-injects when you switch to a new tab — no refresh needed.
 | **MediaWiki** | `<math>…</math>` | Wikipedia / MediaWiki |
 | **AsciiMath** | ASCII notation | AsciiMath renderers |
 | **Markdown** | `$…$` + `**bold**` etc. | Any Markdown editor |
+| **Word** | MathML (native equation) | Microsoft Word |
 | **None** | — | Passthrough (no conversion) |
 
 ## Tech Stack

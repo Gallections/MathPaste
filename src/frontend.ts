@@ -24,6 +24,7 @@ const FORMATS: Record<string, FormatDef> = {
     "math_paste_MediaWiki": { label: "MediaWiki", abbr: "MW",  hint: "<math>",   color: "#3B82F6" },
     "math_paste_AsciiMath": { label: "AsciiMath", abbr: "ASC", hint: "ascii",    color: "#F59E0B" },
     "math_paste_Markdown":  { label: "Markdown",  abbr: "MD",  hint: "**…**",   color: "#0EA5E9" },
+    "math_paste_Word":      { label: "Word",      abbr: "DOC", hint: "Ω",        color: "#2B579A" },
     "math_paste_None":      { label: "None",      abbr: "OFF", hint: "–",        color: "#6B7280" },
 };
 
