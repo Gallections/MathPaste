@@ -48,8 +48,30 @@ a:hover {
     margin-top: 0.4rem;
 }
 
+/* Minimalist line icons (Lucide, https://lucide.dev) — replace the old emoji headers */
+.ob-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #7C3AED;
+    vertical-align: -4px;
+    margin-right: 8px;
+}
+
+/* Smaller inline variant, for icons sitting inline within running text/links */
+.ob-inline-icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    vertical-align: -2px;
+    margin-right: 3px;
+}
+
 /* Pin-to-toolbar tip */
 .ob-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     background: rgba(124, 58, 237, 0.08);
     border: 1px solid rgba(124, 58, 237, 0.25);
     color: #504030;
@@ -59,6 +81,11 @@ a:hover {
     line-height: 1.5;
     max-width: 900px;
     margin: -1.5rem auto 2rem;
+}
+
+.ob-tip .ob-icon {
+    margin-right: 0;
+    margin-top: 2px;
 }
 
 .ob-tip strong {
@@ -121,10 +148,13 @@ section {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
-    line-height: 1;
-    padding-left: 4px; /* optically center the triangle */
     backdrop-filter: blur(2px);
+}
+
+.demo-play svg {
+    width: 24px;
+    height: 24px;
+    margin-left: 3px; /* optically center the triangle */
 }
 
 .demo-caption {
@@ -133,11 +163,15 @@ section {
 }
 
 .demo-caption a {
+    display: inline-flex;
+    align-items: center;
     color: #7a6555;
     font-weight: 600;
 }
 
 h2 {
+    display: flex;
+    align-items: center;
     color: #2e2016;
     margin-bottom: 1rem;
     font-size: 1.4rem;

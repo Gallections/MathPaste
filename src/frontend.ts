@@ -1,3 +1,6 @@
+import { getStoredFormat, setStoredFormat, getStoredUiEnabled, getStoredGeneration, onFormatChange, onUiEnabledChange } from "./state";
+import { ICON_X, createIconElement } from "./icons";
+
 // ─── Format registry ─────────────────────────────────────────────────────────
 
 interface FormatDef {
@@ -9,7 +12,6 @@ interface FormatDef {
 
 const FORMATS: Record<string, FormatDef> = {
     "math_paste_Obsidian":  { label: "Obsidian",  abbr: "OBS", hint: "$…$",      color: "#7C3AED" },
-    "math_paste_Notion":    { label: "Notion",    abbr: "NOT", hint: "$…$",      color: "#94A3B8" },
     "math_paste_LaTex":     { label: "LaTeX",     abbr: "TEX", hint: "raw",      color: "#EF4444" },
     "math_paste_MathJax":   { label: "MathJax",   abbr: "MJX", hint: "\\(…\\)", color: "#22C55E" },
     "math_paste_Typst":     { label: "Typst",     abbr: "TYP", hint: "$ … $",   color: "#06B6D4" },
@@ -135,13 +137,18 @@ const SHADOW_CSS = `
 
 #mp-close {
     all: unset;
-    font-size: 11px;
+    display: flex;
     color: #b0a090;
     cursor: pointer;
-    line-height: 1;
-    padding: 2px 3px;
+    padding: 3px;
     border-radius: 4px;
     transition: color 0.15s, background 0.15s;
+}
+
+#mp-close svg {
+    width: 11px;
+    height: 11px;
+    display: block;
 }
 
 #mp-close:hover {
@@ -207,63 +214,111 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let shadowRoot: ShadowRoot | null = null;
 
 // ─── Auto-start ──────────────────────────────────────────────────────────────
+// The UI toggle and format selection are shared across every tab via
+// chrome.storage.local (see state.ts), so a fresh tab starts in whatever
+// state the extension was last left in — not always-on with no format.
 
-function autoStart() {
-    isActiveContent = true;
+async function autoStart() {
+    isActiveContent = await getStoredUiEnabled();
+    if (isActiveContent) {
+        startObserving();
+        inject();
+    }
+}
+
+function startObserving() {
     observer = new MutationObserver(() => inject());
     observer.observe(document.body, { childList: true, subtree: true });
-    inject();
 }
 
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", autoStart);
-} else {
-    autoStart();
-}
+// Re-initializes whenever the extension's generation changes (see state.ts:
+// a fresh install, update, chrome update, or dev reload) — not merely on
+// this script's first-ever injection into the page. That also covers plain
+// re-injection into a page already running the CURRENT generation (e.g.
+// background.ts re-injects on tab-activate/navigation, and SPAs like
+// ChatGPT/Claude fire navigation-completed events on client-side route
+// changes without a real reload) — same generation means skip, so we don't
+// stack another MutationObserver and another pair of storage listeners.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const win = window as any;
 
-// ─── Message handler ─────────────────────────────────────────────────────────
+initForCurrentGeneration();
 
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.toggle === undefined) return;
-    isActiveContent = message.toggle;
+async function initForCurrentGeneration() {
+    const generation = await getStoredGeneration();
+    if (win.__mathpasteFrontendGeneration === generation) return;
+    win.__mathpasteFrontendGeneration = generation;
 
-    if (isActiveContent) {
-        observer = new MutationObserver(() => inject());
-        observer.observe(document.body, { childList: true, subtree: true });
-        inject();
+    // Drop any pill left by a previous generation — its click handlers and
+    // chrome.runtime.getURL() calls are tied to an extension context that's
+    // now invalidated, so it would silently stop working if left in place.
+    document.getElementById("toggle-options-container")?.remove();
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", autoStart);
     } else {
-        document.getElementById("toggle-options-container")?.remove();
-        shadowRoot = null;
-        observer?.disconnect();
-        observer = null;
+        autoStart();
     }
-});
+
+    // ─── Cross-tab state sync ──────────────────────────────────────────────
+
+    onUiEnabledChange((enabled) => {
+        isActiveContent = enabled;
+
+        if (isActiveContent) {
+            startObserving();
+            inject();
+        } else {
+            document.getElementById("toggle-options-container")?.remove();
+            shadowRoot = null;
+            observer?.disconnect();
+            observer = null;
+        }
+    });
+
+    onFormatChange((formatId) => applyFormat(formatId, /* persist */ false));
+}
 
 // ─── Injection ───────────────────────────────────────────────────────────────
 
 function inject() {
     if (document.getElementById("toggle-options-container")) return;
 
-    const host = document.createElement("div");
-    host.id = "toggle-options-container";
+    try {
+        const host = document.createElement("div");
+        host.id = "toggle-options-container";
 
-    // Shadow root isolates our CSS from the host page entirely
-    shadowRoot = host.attachShadow({ mode: "open" });
+        // Shadow root isolates our CSS from the host page entirely
+        shadowRoot = host.attachShadow({ mode: "open" });
 
-    const style = document.createElement("style");
-    style.textContent = SHADOW_CSS;
-    shadowRoot.appendChild(style);
+        const style = document.createElement("style");
+        style.textContent = SHADOW_CSS;
+        shadowRoot.appendChild(style);
 
-    const panel  = buildPanel();
-    const toggle = buildToggle();
+        const panel  = buildPanel();
+        const toggle = buildToggle();
 
-    shadowRoot.appendChild(panel);
-    shadowRoot.appendChild(toggle);
-    document.body.appendChild(host);
+        shadowRoot.appendChild(panel);
+        shadowRoot.appendChild(toggle);
+        document.body.appendChild(host);
 
-    const header = shadowRoot.getElementById("mp-header") as HTMLElement;
-    setupHover(host, panel);
-    setupDrag(host, panel, toggle, header);
+        const header = shadowRoot.getElementById("mp-header") as HTMLElement;
+        setupHover(host, panel);
+        setupDrag(host, panel, toggle, header);
+
+        // Reflect whatever format is currently selected elsewhere, if any.
+        getStoredFormat().then((formatId) => {
+            if (formatId) applyFormat(formatId, /* persist */ false);
+        });
+    } catch {
+        // buildToggle() calls chrome.runtime.getURL(), which throws once
+        // this generation's extension context is invalidated. That can only
+        // happen here if this is an orphaned instance's MutationObserver
+        // still firing after a newer generation already took over — stop
+        // watching so it doesn't keep erroring on every DOM mutation.
+        observer?.disconnect();
+        observer = null;
+    }
 }
 
 // ─── Toggle pill ─────────────────────────────────────────────────────────────
@@ -313,7 +368,7 @@ function buildHeader(): HTMLElement {
     const close = document.createElement("button");
     close.id = "mp-close";
     close.setAttribute("aria-label", "Close MathPaste");
-    close.textContent = "✕";
+    close.appendChild(createIconElement(ICON_X));
     close.addEventListener("click", (e) => {
         e.stopPropagation();
         const host = document.getElementById("toggle-options-container");
@@ -349,7 +404,7 @@ function buildOptionsList(): HTMLElement {
         row.appendChild(dot);
         row.appendChild(name);
         row.appendChild(hint);
-        row.addEventListener("click", () => selectFormat(id));
+        row.addEventListener("click", () => applyFormat(id));
         list.appendChild(row);
     }
 
@@ -358,7 +413,13 @@ function buildOptionsList(): HTMLElement {
 
 // ─── Format selection ────────────────────────────────────────────────────────
 
-function selectFormat(formatId: string) {
+/**
+ * Updates this tab's pill/panel to reflect `formatId`. By default also
+ * persists it to chrome.storage.local so every other tab picks it up via
+ * onFormatChange — pass persist: false when applying a change that just
+ * arrived from another tab, to avoid an unnecessary redundant write.
+ */
+function applyFormat(formatId: string, persist = true) {
     const fmt = FORMATS[formatId];
     if (!fmt || !shadowRoot) return;
 
@@ -376,7 +437,9 @@ function selectFormat(formatId: string) {
         if (active) row.style.setProperty("--accent", fmt.color);
     }
 
-    chrome.runtime.sendMessage({ action: "functionChange", imgId: formatId });
+    if (persist) {
+        setStoredFormat(formatId);
+    }
 }
 
 // ─── Hover ───────────────────────────────────────────────────────────────────

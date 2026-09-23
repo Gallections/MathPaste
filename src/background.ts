@@ -1,4 +1,4 @@
-let extensionEnabled = true;
+import { getStoredFunctionalityEnabled, setStoredFunctionalityEnabled, setStoredGeneration } from "./state";
 
 // Only the very first install should open onboarding — not every extension
 // update, Chrome update, or reload of an unpacked build during development.
@@ -6,11 +6,35 @@ export function shouldShowOnboarding(reason: string): boolean {
     return reason === "install";
 }
 
-chrome.runtime.onInstalled.addListener((details) => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+    // A fresh generation token invalidates the re-init guard every content
+    // script checks (see state.ts) — install, update, chrome_update, and a
+    // dev reload all restart this service worker and orphan any content
+    // script already running in an open tab, so all of them need this, not
+    // just a first install. Must finish before we (re)inject below, so the
+    // freshly-injected scripts see the new value instead of the old one.
+    await setStoredGeneration(crypto.randomUUID());
+
     if (shouldShowOnboarding(details.reason)) {
         chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
     }
+
+    injectIntoOpenTabs();
 });
+
+// Tabs that were already open when this fired never receive the declarative
+// content_scripts injection — that only fires on a NEW navigation. Without
+// this, the pill wouldn't show up in any tab the user already had open until
+// they switched tabs, navigated, or refreshed.
+function injectIntoOpenTabs() {
+    chrome.tabs.query({}, (tabs) => {
+        for (const tab of tabs) {
+            if (tab.id !== undefined && isInjectableUrl(tab.url)) {
+                injectContentScript(tab.id);
+            }
+        }
+    });
+}
 
 
 // Outdated Code: Rather than performing checks on active tabs, we inject script every time user changes active tabs
@@ -58,38 +82,33 @@ function isInjectableUrl(url) {
 }
 
 
+// Keep this file list in sync with manifest.json's content_scripts entry —
+// both the copy interceptor AND the pill UI need re-injecting into tabs that
+// were already open before install/reload; otherwise the pill never appears
+// there until the user manually refreshes.
 function injectContentScript(tabId) {
     chrome.scripting.executeScript({
         target: { tabId },
-        files: ['src/copy.js']
+        files: ['src/copy.js', 'src/frontend.js']
     }).then(() => {
-        console.log('Injected content script into tab', tabId);
+        console.log('Injected content scripts into tab', tabId);
         // chrome.tabs.sendMessage(tabId, { type: 'setup' });
     }).catch(err => {
-        console.error('Failed to inject content script:', err);
+        console.error('Failed to inject content scripts:', err);
     });
 }
 
 
-chrome.commands.onCommand.addListener((command)=> {
+// The toggles and the format selection all live in chrome.storage.local now
+// (see state.ts) — every content script listens for storage changes directly,
+// so no per-tab message relay is needed here to keep tabs in sync. The
+// keyboard shortcut only flips the functionality toggle (whether copy.ts
+// actually converts math) — the UI (pill) toggle is popup-only, since it's a
+// more cosmetic preference that doesn't need a shortcut.
+chrome.commands.onCommand.addListener(async (command) => {
     if (command === "toggle-math-paste") {
-        extensionEnabled = !extensionEnabled;
-        console.log("Math paste is " + extensionEnabled ? "enabled" : "disabled");
-
-        chrome.tabs.query({active:true, currentWindow:true}, (tabs)=>{
-            if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, {toggle: extensionEnabled});
-            }
-        });
+        const enabled = await getStoredFunctionalityEnabled();
+        await setStoredFunctionalityEnabled(!enabled);
+        console.log("Math paste is " + (!enabled ? "enabled" : "disabled"));
     }
-})
-
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-    if (message.action === "functionChange") {
-        chrome.tabs.query({active:true, currentWindow:true}, (tabs)=>{
-            if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, {imgId: message.imgId});
-            }
-        });
-    }
-})
+});

@@ -4,14 +4,6 @@ Your GO-TO way to translate math from AI Chatbots to online notebooks!
 ## Demo
 Video Demo: [🎥 Watch on YouTube](https://www.youtube.com/watch?v=m4J2uIUJ6IE)
 
-## UI
-
-<p align="center">
-  <img src="screenshots/ui-pill.png" alt="MathPaste toggle pill" height="36">
-  &nbsp;&nbsp;&nbsp;
-  <img src="screenshots/ui-panel.png" alt="MathPaste format selector panel" height="220">
-</p>
-
 ## Table of Contents
 - [Demo](#demo)
 - [Getting Started](#getting-started)
@@ -57,7 +49,7 @@ npm run build
 1. Open ChatGPT, Claude, Copilot, or another supported AI chatbot in Chrome.
 2. The MathPaste floating pill appears automatically in the top-right corner.
 3. Hover over the pill to open the format selector panel.
-4. Select your target format (Obsidian, Notion, LaTeX, etc.).
+4. Select your target format (Obsidian, LaTeX, etc.).
 5. Copy rendered math from the chatbot — MathPaste intercepts the copy and reformats it automatically.
 6. Paste into your notebook app. The math will be formatted correctly.
 7. Press **`Alt+Shift+M`** to toggle the extension on/off.
@@ -74,7 +66,6 @@ MathPaste auto-injects when you switch to a new tab — no refresh needed.
 | Format | Syntax | Target app |
 |---|---|---|
 | **Obsidian** | `$…$` / `$$…$$` | Obsidian |
-| **Notion** | `$…$` | Notion |
 | **LaTeX** | raw LaTeX | LaTeX editors |
 | **MathJax** | `\(…\)` / `\[…\]` | Web / MathJax |
 | **Typst** | `$ … $` | Typst |

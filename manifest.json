@@ -8,7 +8,8 @@
         "clipboardRead",
         "clipboardWrite",
         "tabs",
-        "webNavigation"
+        "webNavigation",
+        "storage"
     ],
     "host_permissions": ["<all_urls>"],
     "icons": {

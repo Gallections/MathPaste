@@ -41,6 +41,111 @@ body {
     line-height: 1.4;
 }
 
+/* Toggle switches */
+.pop-toggles {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+    border: 1px solid rgba(210, 200, 185, 0.5);
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 252, 245, 0.7);
+}
+
+.pop-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    cursor: pointer;
+}
+
+.pop-toggle-row + .pop-toggle-row {
+    border-top: 1px solid rgba(210, 200, 185, 0.35);
+}
+
+.pop-toggle-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: #7a6555;
+}
+
+.pop-toggle-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.pop-toggle-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2e2016;
+}
+
+.pop-toggle-desc {
+    font-size: 0.68rem;
+    color: #b0a090;
+}
+
+.pop-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.pop-switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+    /* Sits on top so every click reaches the real control directly, rather
+       than depending on the browser forwarding a click from the label. */
+    z-index: 1;
+}
+
+.pop-switch-track {
+    position: absolute;
+    inset: 0;
+    background: rgba(176, 160, 144, 0.4);
+    border-radius: 999px;
+    transition: background 0.15s;
+    /* Purely decorative — never intercept clicks meant for the input
+       underneath it. Its :checked-driven styling below is unaffected,
+       since that's a CSS state, not a pointer interaction. */
+    pointer-events: none;
+}
+
+.pop-switch-track::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fffcf5;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s;
+}
+
+.pop-switch input:checked + .pop-switch-track {
+    background: #7C3AED;
+}
+
+.pop-switch input:checked + .pop-switch-track::before {
+    transform: translateX(14px);
+}
+
+.pop-switch input:focus-visible + .pop-switch-track {
+    outline: 2px solid #7C3AED;
+    outline-offset: 2px;
+}
+
 .pop-docs-btn {
     display: flex;
     align-items: center;
@@ -66,15 +171,29 @@ body {
     box-shadow: 0 3px 14px rgba(140, 110, 60, 0.14);
 }
 
+.pop-btn-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
 .pop-footer {
     margin-top: 10px;
     text-align: center;
 }
 
 .pop-footer a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 0.75rem;
     color: #b0a090;
     text-decoration: none;
+}
+
+.pop-footer-icon {
+    width: 12px;
+    height: 12px;
 }
 
 .pop-footer a:hover {
