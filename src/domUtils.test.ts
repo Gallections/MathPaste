@@ -36,6 +36,22 @@ function makeKatexInline(latex: string): HTMLElement {
     return katex;
 }
 
+// Build a .katex > math[display="block"] > annotation structure — real
+// ChatGPT's actual output: no .katex-mathml/.katex-display wrapper at all,
+// the <math> tag is rendered natively and is itself the visible content.
+function makeChatGptStyleBlock(latex: string): HTMLElement {
+    const katex = document.createElement('span');
+    katex.className = 'katex';
+    const math = document.createElement('math');
+    math.setAttribute('display', 'block');
+    const annotation = document.createElement('annotation');
+    annotation.setAttribute('encoding', 'application/x-tex');
+    annotation.textContent = latex;
+    math.appendChild(annotation);
+    katex.appendChild(math);
+    return katex;
+}
+
 const fmt = (latex: string, isBlock: boolean) => isBlock ? `$$${latex}$$` : `$${latex}$`;
 
 describe('processFromLiveDOM', () => {
@@ -90,6 +106,34 @@ describe('processFromLiveDOM', () => {
         const range = document.createRange();
         range.selectNodeContents(innerKatex);
         expect(processFromLiveDOM([range], fmt)).toBe('$$\\frac{a}{b}$$');
+    });
+
+    // Regression test: real ChatGPT skips the .katex-display wrapper and
+    // puts <math display="block"> directly inside .katex — found via live
+    // testing against the actual site. Block equations from that structure
+    // were being mis-detected as inline ($...$ instead of $$...$$).
+    it('detects block math from a ChatGPT-style .katex > math[display="block"] structure', () => {
+        const el = makeChatGptStyleBlock('x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}');
+        document.body.appendChild(el);
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        expect(processFromLiveDOM([range], fmt)).toBe('$$x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}$$');
+    });
+
+    it('still detects inline math when the ChatGPT-style <math> has no display attribute', () => {
+        const katex = document.createElement('span');
+        katex.className = 'katex';
+        const math = document.createElement('math');
+        const annotation = document.createElement('annotation');
+        annotation.setAttribute('encoding', 'application/x-tex');
+        annotation.textContent = 'x^2';
+        math.appendChild(annotation);
+        katex.appendChild(math);
+        document.body.appendChild(katex);
+
+        const range = document.createRange();
+        range.selectNodeContents(katex);
+        expect(processFromLiveDOM([range], fmt)).toBe('$x^2$');
     });
 
     it('joins multiple math containers with newline', () => {

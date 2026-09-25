@@ -27,7 +27,11 @@ export function htmlToMarkdown(node: Node): string {
     if (el.classList.contains('katex')) {
         const ann = el.querySelector('annotation[encoding="application/x-tex"]');
         const latex = ann?.textContent?.trim() ?? '';
-        return latex ? `$${latex}$` : '';
+        if (!latex) return '';
+        // Some renderers (e.g. ChatGPT) skip the .katex-display wrapper and
+        // put <math display="block"> directly inside .katex instead.
+        const isBlock = el.querySelector('math[display="block"]') !== null;
+        return isBlock ? `\n\n$$${latex}$$\n\n` : `$${latex}$`;
     }
     if (tag === 'mjx-container') {
         const ann = el.querySelector('annotation[encoding="application/x-tex"]');

@@ -215,6 +215,23 @@ describe('KaTeX block math', () => {
         expect((result.match(/\$\$/g) ?? []).length).toBe(2); // exactly one $$…$$ pair
         expect(result.trim()).toBe('$$x+y$$');
     });
+
+    // Regression test: real ChatGPT skips the .katex-display wrapper and
+    // puts <math display="block"> directly inside .katex — found via live
+    // testing against the actual site. Was mis-detected as inline ($…$).
+    it('detects block math from a ChatGPT-style .katex > math[display="block"] structure', () => {
+        const katex = document.createElement('span');
+        katex.className = 'katex';
+        const math = document.createElement('math');
+        math.setAttribute('display', 'block');
+        const ann = document.createElement('annotation');
+        ann.setAttribute('encoding', 'application/x-tex');
+        ann.textContent = 'x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}';
+        math.appendChild(ann);
+        katex.appendChild(math);
+
+        expect(htmlToMarkdown(katex).trim()).toBe('$$x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}$$');
+    });
 });
 
 describe('MathJax container', () => {

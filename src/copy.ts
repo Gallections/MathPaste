@@ -1,11 +1,24 @@
-import { processFromLiveDOM } from './domUtils';
+import { processFromLiveDOM, MATH_CONTAINER_SELECTOR, dedupeNestedContainers, computeIsBlock } from './domUtils';
 import { htmlToMarkdown } from './markdownUtils';
 import { latexToMathML } from './latexToMathML';
+import { katexHtmlToLatex } from './katexHtmlToLatex';
 import { getStoredFormat, getStoredFunctionalityEnabled, getStoredGeneration, onFormatChange, onFunctionalityEnabledChange } from './state';
 
 // Use window to persist state across repeated content-script injections.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const win = window as any;
+
+// Registering the "copy" listener in the CAPTURE phase (top-down, document
+// first) instead of the default bubble phase means it always runs before
+// any listener the host page itself registered on a descendant element —
+// e.g. ChatGPT very likely has its own "copy" listener powering its "Ask
+// ChatGPT / Share highlighted" selection toolbar. A bubble-phase listener
+// on an inner element fires *before* one on document, and if that
+// listener also calls clipboardData.setData() (common — sites append a
+// "Read more at ..." attribution on copy this way), it can silently
+// clobber whatever we already wrote. Capture phase avoids the ordering
+// question entirely: we see the event first.
+const CAPTURE_OPTS = { capture: true };
 
 // Re-initializes whenever the extension's generation changes (see state.ts:
 // a fresh install, update, chrome update, or dev reload) — not merely on
@@ -34,8 +47,12 @@ async function initForCurrentGeneration() {
 
     // Drop whatever listener the previous generation registered, if any —
     // that reference is still valid to remove even though the extension
-    // context it closed over is now invalidated.
+    // context it closed over is now invalidated. Try both capture and
+    // bubble phase since an older script version may have registered
+    // without CAPTURE_OPTS (removeEventListener silently no-ops on a
+    // capture-flag mismatch, so this covers either case).
     if (typeof win.__mathpasteListener === "function") {
+        document.removeEventListener("copy", win.__mathpasteListener, CAPTURE_OPTS);
         document.removeEventListener("copy", win.__mathpasteListener);
     }
 
@@ -43,9 +60,9 @@ async function initForCurrentGeneration() {
     win.__mathpasteIsActive = await getStoredFunctionalityEnabled();
     // A single stable listener that always reads the current format from
     // win.__mathpasteCurrentFormat — no need to recreate it on every change.
-    win.__mathpasteListener = () => setUpMathPaste(win.__mathpasteCurrentFormat);
+    win.__mathpasteListener = (event: ClipboardEvent) => setUpMathPaste(event, win.__mathpasteCurrentFormat);
     if (win.__mathpasteIsActive) {
-        document.addEventListener("copy", win.__mathpasteListener);
+        document.addEventListener("copy", win.__mathpasteListener, CAPTURE_OPTS);
     }
 
     // Cross-tab state (see state.ts) — the selected format and the
@@ -55,8 +72,8 @@ async function initForCurrentGeneration() {
     onFormatChange((formatId) => { win.__mathpasteCurrentFormat = formatId; });
     onFunctionalityEnabledChange((enabled) => {
         win.__mathpasteIsActive = enabled;
-        document.removeEventListener("copy", win.__mathpasteListener);
-        if (enabled) document.addEventListener("copy", win.__mathpasteListener);
+        document.removeEventListener("copy", win.__mathpasteListener, CAPTURE_OPTS);
+        if (enabled) document.addEventListener("copy", win.__mathpasteListener, CAPTURE_OPTS);
     });
 }
 
@@ -239,16 +256,86 @@ function latexToAsciiMath(latex: string): string {
 
 // ─── Markdown pipeline ──────────────────────────────────────────────────────
 
-async function setUpMarkdownPaste() {
-    const items = await navigator.clipboard.read();
-    for (const item of items) {
-        if (!item.types.includes("text/html")) continue;
-        const blob = await item.getType("text/html");
-        const htmlText = await blob.text();
-        const doc = new DOMParser().parseFromString(htmlText, "text/html");
-        const markdown = htmlToMarkdown(doc.body).trim().replace(/\n{3,}/g, '\n\n');
-        await navigator.clipboard.writeText(markdown);
-        return;
+function setUpMarkdownPaste(event: ClipboardEvent) {
+    // Snapshot selection synchronously — see patchMissingAnnotations below.
+    const sel = window.getSelection();
+    const selRanges = sel
+        ? Array.from({ length: sel.rangeCount }, (_, i) => sel.getRangeAt(i).cloneRange())
+        : [];
+
+    // See the comment in setUpMathPaste: ClipboardEvent.clipboardData starts
+    // empty on a "copy" event, so the selection HTML has to be built
+    // ourselves from the live Range(s) rather than read back from the event.
+    const container = document.createElement('div');
+    for (const range of selRanges) container.appendChild(range.cloneContents());
+
+    // A tight (or even a full-looking) selection of rendered math commonly
+    // clones NO math container at all — its class-bearing wrapper never
+    // gets included, only the raw visible glyph text (see the comment in
+    // setUpMathPaste on why). patchMissingAnnotations can only patch a
+    // container that's actually present in the clone, so when there isn't
+    // one, fall back to pure live-DOM equation extraction — surrounding
+    // non-math text isn't preserved in this path, same tradeoff the other
+    // formats already accept in their own live-DOM fallback.
+    const hasClonedMathContainer = container.querySelector(MATH_CONTAINER_SELECTOR) !== null;
+    if (!hasClonedMathContainer && selRanges.length > 0) {
+        const mdFormat = (latex: string, isBlock: boolean) => isBlock ? `\n\n$$${latex}$$\n\n` : `$${latex}$`;
+        const liveResult = processFromLiveDOM(selRanges, mdFormat, katexHtmlToLatex);
+        if (liveResult !== null) {
+            setClipboardText(event, liveResult.trim().replace(/\n{3,}/g, '\n\n'));
+            return;
+        }
+    }
+
+    if (!container.innerHTML) return;
+
+    patchMissingAnnotations(container, selRanges);
+    const markdown = htmlToMarkdown(container).trim().replace(/\n{3,}/g, '\n\n');
+    setClipboardText(event, markdown);
+}
+
+/**
+ * Browsers frequently omit a KaTeX annotation's content from the
+ * clipboard's serialized HTML — it's position:absolute; clip:rect(...)
+ * hidden, screen-reader-only — even though the surrounding math container
+ * survives, which otherwise makes htmlToMarkdown silently drop the math
+ * entirely (same root cause as the one setUpWordPaste's live-DOM fallback
+ * works around). Patches any math container with a missing/empty
+ * annotation using the LaTeX from the corresponding LIVE page element,
+ * paired positionally — both lists reflect the same underlying selection,
+ * so document order lines them up.
+ */
+export function patchMissingAnnotations(clonedBody: HTMLElement, ranges: Range[]) {
+    if (ranges.length === 0) return;
+
+    const clonedContainers = dedupeNestedContainers(
+        Array.from(clonedBody.querySelectorAll(MATH_CONTAINER_SELECTOR))
+    );
+
+    const liveContainers = dedupeNestedContainers(
+        Array.from(document.querySelectorAll(MATH_CONTAINER_SELECTOR)).filter(el => ranges.some(r => {
+            try { return r.intersectsNode(el); } catch { return false; }
+        }))
+    );
+
+    const count = Math.min(clonedContainers.length, liveContainers.length);
+    for (let i = 0; i < count; i++) {
+        const clonedEl = clonedContainers[i];
+        const ann = clonedEl.querySelector('annotation[encoding="application/x-tex"]');
+        if (ann?.textContent?.trim()) continue; // already present — nothing to patch
+
+        const liveAnn = liveContainers[i].querySelector('annotation[encoding="application/x-tex"]');
+        const latex = liveAnn?.textContent?.trim() || katexHtmlToLatex(liveContainers[i]).trim();
+        if (!latex) continue;
+
+        if (ann) {
+            ann.textContent = latex;
+        } else {
+            const newAnn = clonedEl.ownerDocument.createElement('annotation');
+            newAnn.setAttribute('encoding', 'application/x-tex');
+            newAnn.textContent = latex;
+            clonedEl.appendChild(newAnn);
+        }
     }
 }
 
@@ -271,24 +358,25 @@ async function setUpMarkdownPaste() {
 // an edge-case fallback here; verified live that it's the path that
 // actually fires for real KaTeX output.
 
-async function setUpWordPaste() {
-    // Snapshot selection before any await — it's cleared/changed after async gaps.
+function setUpWordPaste(event: ClipboardEvent) {
+    // Snapshot selection synchronously — before any DOM changes.
     const sel = window.getSelection();
     const selRanges = sel
         ? Array.from({ length: sel.rangeCount }, (_, i) => sel.getRangeAt(i).cloneRange())
         : [];
 
-    const items = await navigator.clipboard.read();
+    // See the comment in setUpMathPaste: ClipboardEvent.clipboardData starts
+    // empty on a "copy" event, so the selection HTML has to be built
+    // ourselves from the live Range(s) rather than read back from the event.
+    const container = document.createElement('div');
+    for (const range of selRanges) container.appendChild(range.cloneContents());
+    const htmlText = container.innerHTML;
 
     // ── Strategy 1: HTML clipboard with rendered math (KaTeX, MathJax, MathML) ──
-    for (const item of items) {
-        if (!item.types.includes("text/html")) continue;
-        const blob = await item.getType("text/html");
-        const htmlText = await blob.text();
-        const doc = new DOMParser().parseFromString(htmlText, "text/html");
-        const { html, text, replaced } = processHTMLForWord(doc.body);
+    if (htmlText) {
+        const { html, text, replaced } = processHTMLForWord(container);
         if (replaced > 0) {
-            await writeClipboard(html, text);
+            setClipboardData(event, html, text);
             return;
         }
 
@@ -296,24 +384,19 @@ async function setUpWordPaste() {
         if (selRanges.length > 0) {
             const liveResult = processFromLiveDOMForWord(selRanges);
             if (liveResult) {
-                await writeClipboard(liveResult.html, liveResult.text);
+                setClipboardData(event, liveResult.html, liveResult.text);
                 return;
             }
         }
 
-        break; // HTML present but no math found — skip plain-text strategy
+        return; // HTML present but no math found — skip plain-text strategy, native copy stands
     }
 
     // ── Strategy 2: Plain text containing LaTeX delimiters ──
-    for (const item of items) {
-        if (!item.types.includes("text/plain")) continue;
-        const blob = await item.getType("text/plain");
-        const plain = await blob.text();
-        if (hasLatexDelimiters(plain)) {
-            const { html, text } = processPlainTextForWord(plain);
-            await writeClipboard(html, text);
-        }
-        return;
+    const plain = sel?.toString() ?? "";
+    if (plain && hasLatexDelimiters(plain)) {
+        const { html, text } = processPlainTextForWord(plain);
+        setClipboardData(event, html, text);
     }
 }
 
@@ -328,16 +411,14 @@ async function setUpWordPaste() {
 export function processFromLiveDOMForWord(ranges: Range[]): { html: string; text: string } | null {
     if (ranges.length === 0) return null;
 
-    const candidates = Array.from(
-        document.querySelectorAll('.katex-display, .katex, mjx-container')
-    );
+    const candidates = Array.from(document.querySelectorAll(MATH_CONTAINER_SELECTOR));
 
-    let matched: Element[] = [];
-    for (const container of candidates) {
+    const matched: Element[] = [];
+    for (const el of candidates) {
         for (const range of ranges) {
             try {
-                if (range.intersectsNode(container)) {
-                    matched.push(container);
+                if (range.intersectsNode(el)) {
+                    matched.push(el);
                     break;
                 }
             } catch {
@@ -346,30 +427,55 @@ export function processFromLiveDOMForWord(ranges: Range[]): { html: string; text
         }
     }
 
-    matched = matched.filter(
-        el => !matched.some(other => other !== el && other.contains(el))
-    );
-
     const container = document.createElement("div");
     let found = false;
 
-    for (const el of matched) {
+    for (const el of dedupeNestedContainers(matched)) {
         const annotation = el.querySelector('annotation[encoding="application/x-tex"]');
-        if (!annotation) continue;
-        const latex = (annotation.textContent ?? '').trim();
-        if (!latex) continue;
-        const tag = el.tagName.toLowerCase();
-        const isBlock =
-            el.classList.contains('katex-display') ||
-            (tag === 'mjx-container' && el.hasAttribute('display'));
+        const latex = (annotation?.textContent ?? '').trim();
+        const isBlock = computeIsBlock(el);
 
+        if (annotation && latex) {
+            if (found) container.appendChild(document.createTextNode(' '));
+            container.appendChild(buildMathMLElement(annotation, latex, isBlock));
+            found = true;
+            continue;
+        }
+
+        // No annotation anywhere (KaTeX rendered HTML-only — see
+        // katexHtmlToLatex.ts) — reconstruct approximate LaTeX from the
+        // visual HTML structure instead of skipping this equation entirely.
+        const reconstructed = katexHtmlToLatex(el).trim();
+        if (!reconstructed) continue;
         if (found) container.appendChild(document.createTextNode(' '));
-        container.appendChild(buildMathMLElement(annotation, latex, isBlock));
+        container.appendChild(synthesizeMathMLElement(reconstructed, isBlock));
         found = true;
     }
 
     if (!found) return null;
     return { html: container.innerHTML, text: container.textContent ?? '' };
+}
+
+/**
+ * Every `.katex-display`/`.katex`/`mjx-container` in `root` that isn't
+ * nested inside another one already in the list — the outermost math
+ * container for each equation, deduplicated.
+ */
+function findTopLevelMathContainers(root: Element): Element[] {
+    return dedupeNestedContainers(Array.from(root.querySelectorAll(MATH_CONTAINER_SELECTOR)));
+}
+
+/**
+ * Gets a math container's LaTeX (from its annotation if present, else
+ * reconstructed from the visual HTML — see katexHtmlToLatex.ts for why
+ * that fallback exists at all) and whether it's block/display math. Null
+ * if there's nothing usable either way.
+ */
+function extractMathContent(container: Element): { latex: string; isBlock: boolean } | null {
+    const annotation = container.querySelector('annotation[encoding="application/x-tex"]');
+    const latex = annotation?.textContent?.trim() || katexHtmlToLatex(container).trim();
+    if (!latex) return null;
+    return { latex, isBlock: computeIsBlock(container) };
 }
 
 /**
@@ -379,20 +485,16 @@ export function processFromLiveDOMForWord(ranges: Range[]): { html: string; text
  */
 export function processHTMLForWord(htmlBody: HTMLElement): { html: string; text: string; replaced: number } {
     const clone = htmlBody.cloneNode(true) as HTMLElement;
-    const seen = new WeakSet<Element>();
     let replaced = 0;
 
-    for (const annotation of Array.from(
-        clone.querySelectorAll('annotation[encoding="application/x-tex"]')
-    )) {
-        const latex = (annotation.textContent ?? '').trim();
-        if (!latex) continue;
+    for (const container of findTopLevelMathContainers(clone)) {
+        const extracted = extractMathContent(container);
+        if (!extracted) continue;
 
-        const { container, isBlock } = findMathContainer(annotation as Element);
-        if (!container || seen.has(container)) continue;
-        seen.add(container);
-
-        const mathEl = buildMathMLElement(annotation as Element, latex, isBlock);
+        const annotation = container.querySelector('annotation[encoding="application/x-tex"]');
+        const mathEl = annotation?.textContent?.trim()
+            ? buildMathMLElement(annotation, extracted.latex, extracted.isBlock)
+            : synthesizeMathMLElement(extracted.latex, extracted.isBlock);
         container.parentNode?.replaceChild(mathEl, container);
         replaced++;
     }
@@ -415,6 +517,11 @@ function buildMathMLElement(annotation: Element, latex: string, isBlock: boolean
         return el;
     }
 
+    return synthesizeMathMLElement(latex, isBlock);
+}
+
+/** Builds a fresh <math> element from a LaTeX string — no pre-rendered tree to reuse. */
+function synthesizeMathMLElement(latex: string, isBlock: boolean): Element {
     const parsed = new DOMParser().parseFromString(latexToMathML(latex, isBlock), "application/xml");
     return document.importNode(parsed.documentElement, true);
 }
@@ -460,62 +567,71 @@ export function processPlainTextForWord(text: string): { html: string; text: str
 
 // ─── Core pipeline ──────────────────────────────────────────────────────────
 
-async function setUpMathPaste(imgId: string | null) {
+function setUpMathPaste(event: ClipboardEvent, imgId: string | null) {
     if (imgId === 'math_paste_Markdown') {
-        await setUpMarkdownPaste();
+        setUpMarkdownPaste(event);
         return;
     }
     if (imgId === 'math_paste_Word') {
-        await setUpWordPaste();
+        setUpWordPaste(event);
         return;
     }
 
     const formatFn = win.__mathpasteOptionToFunction[imgId];
     if (!formatFn) return;
 
-    // Snapshot selection before any await — the selection is cleared/changed after async gaps
+    // Snapshot selection synchronously — before any DOM changes.
     const sel = window.getSelection();
     const selRanges = sel
         ? Array.from({ length: sel.rangeCount }, (_, i) => sel.getRangeAt(i).cloneRange())
         : [];
 
-    const items = await navigator.clipboard.read();
+    // Build our own HTML serialization of the selected DOM instead of
+    // reading it from the ClipboardEvent. ClipboardEvent.clipboardData on a
+    // "copy" event starts as an EMPTY DataTransfer — it's an out-tray for a
+    // page to write an override into via setData(), never pre-populated
+    // with the browser's own default serialization of the selection, so
+    // there is nothing to read back from it synchronously (confirmed live:
+    // clipboardData.getData() returns "" for both text/html and text/plain
+    // on entry, every time, by spec — not a bug). The old async code worked
+    // around this by reading the OS clipboard back via
+    // navigator.clipboard.read() *after* the browser's real default copy
+    // had already written to it — which is why it was async, and also why
+    // it raced that same default write. Cloning straight from the live
+    // selection Range(s) gets us the same kind of HTML without waiting on
+    // (or racing) anything the browser does.
+    const container = document.createElement('div');
+    for (const range of selRanges) container.appendChild(range.cloneContents());
+    const htmlText = container.innerHTML;
+    const plainText = sel?.toString() ?? "";
 
     // ── Strategy 1: HTML clipboard with rendered math (KaTeX, MathJax, MathML) ──
-    for (const item of items) {
-        if (!item.types.includes("text/html")) continue;
-        const blob = await item.getType("text/html");
-        const htmlText = await blob.text();
-        const doc = new DOMParser().parseFromString(htmlText, "text/html");
-        const { html, text, replaced } = processHTML(doc.body, formatFn);
+    if (htmlText) {
+        const { html, text, replaced } = processHTML(container, formatFn);
         if (replaced > 0) {
-            await writeClipboard(html, text);
+            setClipboardData(event, html, text);
             return;
         }
 
-        // ── Strategy 1.5: HTML present but no annotations — fall back to live DOM ──
+        // ── Strategy 1.5: HTML present but no annotations — fall back to live DOM,
+        // and if even the live DOM has no annotation at all (KaTeX rendered
+        // HTML-only, no MathML companion — see katexHtmlToLatex.ts), reconstruct
+        // approximate LaTeX from the visual HTML structure as a last resort. ──
         if (selRanges.length > 0) {
-            const liveResult = processFromLiveDOM(selRanges, formatFn);
+            const liveResult = processFromLiveDOM(selRanges, formatFn, katexHtmlToLatex);
             if (liveResult !== null) {
-                await navigator.clipboard.writeText(liveResult);
+                setClipboardText(event, liveResult);
                 return;
             }
         }
 
-        break; // HTML present but no math found — skip plain-text strategy
+        return; // HTML present but no math found — skip plain-text strategy
     }
 
     // ── Strategy 2: Plain text containing LaTeX delimiters ──
     // Covers: platform copy buttons, Copilot (no rendering), markdown sources
-    for (const item of items) {
-        if (!item.types.includes("text/plain")) continue;
-        const blob = await item.getType("text/plain");
-        const plain = await blob.text();
-        if (hasLatexDelimiters(plain)) {
-            const converted = processPlainText(plain, formatFn);
-            await navigator.clipboard.writeText(converted);
-        }
-        return;
+    if (plainText && hasLatexDelimiters(plainText)) {
+        setClipboardText(event, processPlainText(plainText, formatFn));
     }
 }
 
@@ -526,68 +642,25 @@ async function setUpMathPaste(imgId: string | null) {
  * in-place with formatted LaTeX text, and returns the result together with
  * a count of replacements made. All surrounding formatting is preserved.
  */
-function processHTML(
+export function processHTML(
     htmlBody: HTMLElement,
     formatFn: (latex: string, isBlock: boolean) => string
 ): { html: string; text: string; replaced: number } {
     const clone = htmlBody.cloneNode(true) as HTMLElement;
-    const seen = new WeakSet<Element>();
     let replaced = 0;
 
-    for (const annotation of Array.from(
-        clone.querySelectorAll('annotation[encoding="application/x-tex"]')
-    )) {
-        const latex = (annotation.textContent ?? '').trim();
-        if (!latex) continue;
-
-        const { container, isBlock } = findMathContainer(annotation as Element);
-        if (!container || seen.has(container)) continue;
-        seen.add(container);
+    for (const container of findTopLevelMathContainers(clone)) {
+        const extracted = extractMathContent(container);
+        if (!extracted) continue;
 
         container.parentNode?.replaceChild(
-            document.createTextNode(formatFn(latex, isBlock)),
+            document.createTextNode(formatFn(extracted.latex, extracted.isBlock)),
             container
         );
         replaced++;
     }
 
     return { html: clone.innerHTML, text: clone.textContent ?? '', replaced };
-}
-
-/**
- * Walks up the DOM from a LaTeX annotation to find the outermost math
- * container to replace. Handles:
- *   - KaTeX inline  → .katex
- *   - KaTeX block   → .katex-display
- *   - MathJax v3    → mjx-container
- *   - Native MathML → <math>
- */
-function findMathContainer(start: Element): { container: Element | null; isBlock: boolean } {
-    let el: Element | null = start.parentElement;
-    let container: Element | null = null;
-    let isBlock = false;
-
-    while (el && el.tagName.toLowerCase() !== 'body') {
-        const tag = el.tagName.toLowerCase();
-
-        if (el.classList?.contains('katex-display')) {
-            return { container: el, isBlock: true };          // KaTeX block — outermost
-        }
-        if (el.classList?.contains('katex')) {
-            container = el; isBlock = false;                  // KaTeX inline — keep walking
-        }
-        if (tag === 'mjx-container') {
-            return { container: el, isBlock: el.hasAttribute('display') }; // MathJax
-        }
-        if (tag === 'math' && !container) {
-            container = el;                                   // bare MathML
-            isBlock = el.getAttribute('display') === 'block';
-        }
-
-        el = el.parentElement;
-    }
-
-    return { container, isBlock };
 }
 
 /** True if text contains any recognised LaTeX math delimiters. */
@@ -614,15 +687,36 @@ function processPlainText(
 
 // ─── Clipboard helpers ───────────────────────────────────────────────────────
 
-async function writeClipboard(htmlContent: string, plainText: string) {
-    try {
-        await navigator.clipboard.write([
-            new ClipboardItem({
-                'text/html':  new Blob([`<html><body>${htmlContent}</body></html>`], { type: 'text/html' }),
-                'text/plain': new Blob([plainText], { type: 'text/plain' }),
-            })
-        ]);
-    } catch (err) {
-        console.error("MathPaste: failed to write clipboard:", err);
+// Claims the copy event synchronously via ClipboardEvent.clipboardData —
+// see the comment in setUpMathPaste for why this replaces the old async
+// navigator.clipboard.write() approach. Must be called synchronously within
+// the "copy" event handler's call stack (no `await` beforehand): clipboardData
+// stops accepting writes once the event handler returns to the event loop.
+function setClipboardData(event: ClipboardEvent, htmlContent: string, plainText: string) {
+    if (!event.clipboardData) {
+        console.error("MathPaste: copy event has no clipboardData — cannot override clipboard");
+        return;
     }
+    event.preventDefault();
+    event.clipboardData.setData('text/html', `<html><body>${htmlContent}</body></html>`);
+    event.clipboardData.setData('text/plain', plainText);
+    // Host pages commonly attach their own "copy" listener too (ChatGPT
+    // clearly does — it powers the "Ask ChatGPT / Share highlighted"
+    // selection toolbar). A later-running listener on the same target can
+    // still call clipboardData.setData() itself and silently clobber ours —
+    // event.preventDefault() only suppresses the browser's own default
+    // copy, it does nothing to stop other listeners from running. Claim
+    // the event outright once we've written to it, matching how rich-text
+    // editors that customize copy (Google Docs, GitHub, etc.) do this.
+    event.stopImmediatePropagation();
+}
+
+function setClipboardText(event: ClipboardEvent, plainText: string) {
+    if (!event.clipboardData) {
+        console.error("MathPaste: copy event has no clipboardData — cannot override clipboard");
+        return;
+    }
+    event.preventDefault();
+    event.clipboardData.setData('text/plain', plainText);
+    event.stopImmediatePropagation(); // see setClipboardData
 }
