@@ -1,12 +1,10 @@
 {
     "manifest_version": 3,
     "name": "Math Paste",
-    "version": "1.2.0",
-    "description": "An light weight application that aims to ease the transfer of rendered math equations from GPT to Notion",
+    "version": "2.0.0",
+    "description": "Copy rendered math from ChatGPT, Claude, or Copilot and paste it as Obsidian, LaTeX, MathJax, Typst, Word, and more.",
     "permissions": [
         "scripting",
-        "clipboardRead",
-        "clipboardWrite",
         "tabs",
         "webNavigation",
         "storage"
